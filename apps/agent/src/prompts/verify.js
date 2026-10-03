@@ -34,6 +34,8 @@ Respond in JSON:
 }
 `.trim();
 
+import { getSystemDateInfo } from '../utils/date.js';
+
 /**
  * Build verification prompt for the auditor
  * @param {Object} data
@@ -41,9 +43,12 @@ Respond in JSON:
  */
 export function buildVerifyPrompt(data) {
   const { successCriteria, claimedOutcome, memory, billsTableObservation, billDetailObservation, sourcePdfExtraction } = data;
+  const dateInfo = getSystemDateInfo();
 
   let prompt = `=== AUDIT OBJECTIVE: VERIFY CLAIMED OUTCOME ===\n`;
+  prompt += `Current System Date: ${dateInfo.ddmm} (${dateInfo.readable}, DD/MM/YYYY)\n`;
   prompt += `Claimed Outcome: ${claimedOutcome}\n\n`;
+
 
   prompt += `Success Criteria to Verify:\n`;
   for (const c of successCriteria) {

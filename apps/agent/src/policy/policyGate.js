@@ -64,10 +64,11 @@ export async function evaluatePolicyGate(toolCall, options = {}) {
       const targetEl = (snapshot?.interactiveElements || []).find((el) => el.ref === ref);
 
       const isSubmitOrPay = targetEl && (
-        targetEl.name.toLowerCase().includes('submit') ||
-        targetEl.name.toLowerCase().includes('create') ||
-        targetEl.name.toLowerCase().includes('mark as paid') ||
-        targetEl.name.toLowerCase().includes('pay')
+        targetEl.role === 'button' && (
+          targetEl.name.toLowerCase().includes('submit') ||
+          targetEl.name.toLowerCase().includes('mark as paid') ||
+          targetEl.name.toLowerCase().includes('pay')
+        )
       );
 
       if (isSubmitOrPay) {

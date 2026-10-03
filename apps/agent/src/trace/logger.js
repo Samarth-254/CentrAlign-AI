@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import pino from 'pino';
 import { maskSecretsDeep } from '../security/secrets.js';
-import { EVENT_TYPES } from '@centralign/shared';
 
 /**
  * Structured Trace Logger
@@ -92,7 +91,7 @@ export class TraceLogger {
     for (const listener of this.listeners) {
       try {
         listener(maskedEvent);
-      } catch (err) {
+      } catch {
         // ignore subscriber errors
       }
     }

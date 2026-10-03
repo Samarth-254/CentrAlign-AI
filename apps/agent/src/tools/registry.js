@@ -246,39 +246,69 @@ export async function executeTool(toolName, rawArgs = {}, ctx = {}) {
 export function getGeminiFunctionDeclarations() {
   const declarations = [];
 
+  function unwrapZodType(schema) {
+    let current = schema;
+    let isOptional = false;
+    while (
+      current?._def?.typeName === 'ZodOptional' ||
+      current?._def?.typeName === 'ZodNullable' ||
+      current?._def?.typeName === 'ZodDefault'
+    ) {
+      isOptional = true;
+      current = current._def.innerType || current._def.schema;
+    }
+    return { inner: current, isOptional };
+  }
+
   for (const [name, def] of Object.entries(TOOL_DEFINITIONS)) {
-    // Generate JSON schema from zod or shape
     const properties = {};
     const required = [];
 
-    // Inspect shape of Zod schema
     const shape = def.schema._def?.shape?.() || def.schema._def?.schema?._def?.shape?.() || {};
-    for (const [propName, propSchema] of Object.entries(shape)) {
+    for (const [propName, rawPropSchema] of Object.entries(shape)) {
+      const { inner: propSchema, isOptional } = unwrapZodType(rawPropSchema);
       let type = 'STRING';
-      const typeName = propSchema._def.typeName;
-      if (typeName === 'ZodNumber') type = 'NUMBER';
-      else if (typeName === 'ZodBoolean') type = 'BOOLEAN';
-      else if (typeName === 'ZodArray') type = 'ARRAY';
-      else if (typeName === 'ZodObject') type = 'OBJECT';
+      let items = undefined;
+      const typeName = propSchema?._def?.typeName;
+
+      if (typeName === 'ZodNumber') {
+        type = 'NUMBER';
+      } else if (typeName === 'ZodBoolean') {
+        type = 'BOOLEAN';
+      } else if (typeName === 'ZodArray') {
+        type = 'ARRAY';
+        const innerItem = unwrapZodType(propSchema._def.type).inner;
+        let itemGeminiType = 'STRING';
+        if (innerItem?._def?.typeName === 'ZodNumber') itemGeminiType = 'NUMBER';
+        else if (innerItem?._def?.typeName === 'ZodBoolean') itemGeminiType = 'BOOLEAN';
+        else if (innerItem?._def?.typeName === 'ZodObject') itemGeminiType = 'OBJECT';
+        items = { type: itemGeminiType };
+      } else if (typeName === 'ZodObject') {
+        type = 'OBJECT';
+      }
 
       properties[propName] = {
         type,
-        description: propSchema.description || `Parameter ${propName}`,
+        description: rawPropSchema.description || propSchema?.description || `Parameter ${propName}`,
+        ...(items ? { items } : {}),
       };
 
-      if (!propSchema.isOptional && !propSchema._def.defaultValue) {
+      if (!isOptional && (!rawPropSchema.isOptional || !rawPropSchema.isOptional())) {
         required.push(propName);
       }
     }
 
+    const hasProps = Object.keys(properties).length > 0;
     declarations.push({
       name,
       description: def.description,
-      parameters: {
-        type: 'OBJECT',
-        properties,
-        required: required.length > 0 ? required : undefined,
-      },
+      parameters: hasProps
+        ? {
+            type: 'OBJECT',
+            properties,
+            required: required.length > 0 ? required : undefined,
+          }
+        : undefined,
     });
   }
 

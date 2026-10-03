@@ -5,7 +5,7 @@ export const humanTools = {
   /**
    * Ask human a clarifying question
    */
-  async ask_human({ question, options = [] }, ctx) {
+  async ask_human({ question, options = [] }, _ctx) {
     return {
       type: 'question',
       question,
@@ -17,7 +17,7 @@ export const humanTools = {
   /**
    * Request human approval for a proposed write action
    */
-  async request_approval({ action, description, payload = {} }, ctx) {
+  async request_approval({ action, description, payload = {} }, _ctx) {
     return {
       type: 'approval',
       action,

@@ -14,12 +14,17 @@ export async function planNode(state, config) {
   let newPlan;
 
   if (llmClient && llmClient.isConfigured()) {
-    const prompt = buildPlanPrompt(understanding, plan, replanReason);
-    newPlan = await llmClient.generateStructured({
-      systemInstruction: PLAN_SYSTEM_PROMPT,
-      prompt,
-      schema: PlanSchema,
-    });
+    try {
+      const prompt = buildPlanPrompt(understanding, plan, replanReason);
+      newPlan = await llmClient.generateStructured({
+        systemInstruction: PLAN_SYSTEM_PROMPT,
+        prompt,
+        schema: PlanSchema,
+      });
+    } catch (err) {
+      console.warn('LLM plan generation failed (e.g. rate limit), falling back to heuristic:', err.message);
+      newPlan = buildHeuristicPlan(understanding, replanReason);
+    }
   } else {
     newPlan = buildHeuristicPlan(understanding, replanReason);
   }
@@ -49,7 +54,7 @@ export async function planNode(state, config) {
  * @param {string} [replanReason]
  * @returns {import('@centralign/shared').Plan}
  */
-export function buildHeuristicPlan(understanding, replanReason = null) {
+export function buildHeuristicPlan(understanding, _replanReason = null) {
   const obj = understanding.objective.toLowerCase();
 
   if (obj.includes('mark') && obj.includes('paid')) {

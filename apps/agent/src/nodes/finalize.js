@@ -10,7 +10,7 @@ export async function finalizeNode(state, config) {
   const {
     runId,
     goal,
-    understanding,
+    understanding: _understanding,
     plan,
     memory = {},
     evidence = [],
@@ -19,12 +19,17 @@ export async function finalizeNode(state, config) {
     error,
     lastAction,
   } = state;
-  const { runDir, logger } = config.configurable || {};
+  const { runDir, logger, runContext } = config.configurable || {};
 
   logger?.emit(EVENT_TYPES.NODE_ENTERED, { node: 'finalize' });
 
   const isSuccess = verification ? verification.overall : status === 'completed';
   const finalStatus = isSuccess ? 'completed' : 'failed';
+
+  if (runContext) {
+    runContext.status = finalStatus;
+  }
+
 
   // Construct Final Report
   const finalReport = {
@@ -33,7 +38,7 @@ export async function finalizeNode(state, config) {
     status: finalStatus,
     summary: isSuccess
       ? `Task autonomously completed and independently verified. ${verification?.summary || ''}`
-      : `Task could not be verified successfully. Error: ${error || 'Failed verification checks.'}`,
+      : (lastAction?.args?.claimedOutcome || error || verification?.summary || 'Task could not be verified successfully.'),
     outcome: lastAction?.args?.claimedOutcome || (isSuccess ? 'Objective achieved' : 'Execution halted'),
     extractedData: {
       invoiceNumber: memory.invoiceNumber || memory.invoiceNo,

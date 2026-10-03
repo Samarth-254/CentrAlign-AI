@@ -99,8 +99,9 @@ export const fileTools = {
   /**
    * List files in the run workspace
    */
-  async file_list({ subpath = '' }, ctx) {
-    const safePath = resolveSafePath(ctx.workspaceDir, subpath);
+  async file_list({ subpath = '.' } = {}, ctx) {
+    const targetSubpath = subpath || '.';
+    const safePath = resolveSafePath(ctx.workspaceDir, targetSubpath);
     if (!fs.existsSync(safePath)) {
       return { files: [], message: `Directory "${subpath}" does not exist yet.` };
     }

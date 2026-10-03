@@ -73,9 +73,31 @@ export const browserTools = {
       throw new Error(`Element ref "${ref}" not found in current page DOM. Call browser_snapshot to inspect current refs.`);
     }
 
+    const href = await el.getAttribute('href').catch(() => null);
+    const hasDownloadAttr = (await el.getAttribute('download').catch(() => null)) !== null;
+    const isPdfLink = href && (href.endsWith('.pdf') || href.includes('/invoices/'));
+
+    if (hasDownloadAttr || isPdfLink) {
+      return await browserTools.browser_download({ ref }, ctx);
+    }
+
+    const prevUrl = page.url();
     // Attempt standard click; if navigation happens, wait for network idle/load
     await el.click({ timeout: 5000 });
     await page.waitForTimeout(500); // allow microtasks to settle
+
+    // If it was an anchor with an href and the page URL did not change, fallback to page.goto
+    if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+      const currentUrl = page.url();
+      if (currentUrl === prevUrl) {
+        try {
+          const targetUrl = new URL(href, prevUrl).toString();
+          await page.goto(targetUrl, { waitUntil: 'load', timeout: 8000 });
+        } catch {
+          // ignore navigation error
+        }
+      }
+    }
 
     const snapshot = await getPageSnapshot(page, {
       screenshotsDir: ctx.screenshotsDir,
@@ -192,7 +214,7 @@ export const browserTools = {
         );
       }
       return { ok: true, matched: textOrSelector };
-    } catch (err) {
+    } catch {
       throw new Error(`Timed out waiting for "${textOrSelector}" after ${timeoutMs}ms.`);
     }
   },

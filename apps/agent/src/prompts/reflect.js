@@ -39,7 +39,7 @@ Respond in JSON:
  * @returns {string}
  */
 export function buildReflectPrompt(context) {
-  const { lastAction, toolResult, lastObservation, plan, failureCount } = context;
+  const { lastAction, toolResult, lastObservation, plan: _plan, failureCount } = context;
 
   return `Evaluate the outcome of the following step:
 

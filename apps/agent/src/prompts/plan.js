@@ -34,6 +34,8 @@ You must respond with valid JSON adhering to:
 }
 `.trim();
 
+import { getSystemDateInfo } from '../utils/date.js';
+
 /**
  * Generate user prompt for planning
  * @param {Object} understanding
@@ -42,7 +44,9 @@ You must respond with valid JSON adhering to:
  * @returns {string}
  */
 export function buildPlanPrompt(understanding, currentPlan = null, replanReason = null) {
-  let prompt = `Objective: ${understanding.objective}\n`;
+  const dateInfo = getSystemDateInfo();
+  let prompt = `Current System Date: ${dateInfo.ddmm} (${dateInfo.readable}, DD/MM/YYYY)\n`;
+  prompt += `Objective: ${understanding.objective}\n`;
   prompt += `Success Criteria:\n${understanding.successCriteria.map((c) => `- ${c}`).join('\n')}\n`;
   prompt += `Constraints:\n${understanding.constraints.map((c) => `- ${c}`).join('\n')}\n`;
 
@@ -56,3 +60,4 @@ export function buildPlanPrompt(understanding, currentPlan = null, replanReason 
 
   return prompt;
 }
+

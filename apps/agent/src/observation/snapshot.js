@@ -13,7 +13,7 @@ import fs from 'node:fs';
  * @returns {Promise<import('@centralign/shared').PageSnapshot>}
  */
 export async function getPageSnapshot(page, options = {}) {
-  const { screenshotsDir, stepIndex = 0, caption = 'Page state snapshot' } = options;
+  const { screenshotsDir, stepIndex = 0, _caption = 'Page state snapshot' } = options;
 
   const url = page.url();
   const title = await page.title();

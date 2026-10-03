@@ -36,4 +36,17 @@ describe('Loop Detection', () => {
     const result = detectActionLoop(history, 3);
     expect(result.isLoop).toBe(false);
   });
+
+  it('detects 2-cycle alternating oscillation (A -> B -> A -> B)', () => {
+    const history = [
+      { action: { name: 'browser_click', args: { ref: 'e9' } } },
+      { action: { name: 'browser_click', args: { ref: 'e7' } } },
+      { action: { name: 'browser_click', args: { ref: 'e9' } } },
+      { action: { name: 'browser_click', args: { ref: 'e7' } } },
+    ];
+
+    const result = detectActionLoop(history, 3);
+    expect(result.isLoop).toBe(true);
+    expect(result.toolName).toBe('browser_click');
+  });
 });

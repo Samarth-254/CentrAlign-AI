@@ -6,7 +6,7 @@ export const controlTools = {
    * Propose task completion with claimed outcome and summary
    * Note: The agent can only CLAIM completion; the independent verifier determines if it truly succeeded.
    */
-  async finish({ claimedOutcome, summary = '' }, ctx) {
+  async finish({ claimedOutcome, summary = '' }, _ctx) {
     return {
       status: 'claim_submitted',
       claimedOutcome,

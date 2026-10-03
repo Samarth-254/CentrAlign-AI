@@ -1,5 +1,12 @@
+import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { GoogleGenAI } from '@google/genai';
 import { getGeminiFunctionDeclarations } from '../tools/registry.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 /**
  * Thin wrapper around Google Gemini (@google/genai)
@@ -12,8 +19,8 @@ export class LlmClient {
    * @param {string} [config.model]
    */
   constructor(config = {}) {
-    this.apiKey = config.apiKey || process.env.GEMINI_API_KEY;
-    this.model = config.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    this.apiKey = (config.apiKey || process.env.GEMINI_API_KEY || '').trim();
+    this.model = (config.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
 
     if (this.apiKey) {
       this.ai = new GoogleGenAI({ apiKey: this.apiKey });
@@ -31,6 +38,32 @@ export class LlmClient {
   }
 
   /**
+   * Helper to execute Gemini API calls with backoff on 429 rate limits
+   * @param {Function} fn
+   * @param {number} [maxRetries=2]
+   * @returns {Promise<*>}
+   */
+  async _withRetry(fn, maxRetries = 3) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        const is429 =
+          err?.message?.includes('429') ||
+          err?.message?.includes('RESOURCE_EXHAUSTED') ||
+          err?.status === 'RESOURCE_EXHAUSTED';
+        if (is429 && attempt < maxRetries) {
+          const delay = (attempt + 1) * 5000;
+          console.warn(`[Gemini Rate Limit 429] Waiting ${delay / 1000}s before retry (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  /**
    * Generate raw content from Gemini
    * @param {Object} params
    * @returns {Promise<string>}
@@ -42,14 +75,16 @@ export class LlmClient {
 
     const { contents, systemInstruction, temperature = 0.2 } = params;
 
-    const response = await this.ai.models.generateContent({
-      model: this.model,
-      contents: Array.isArray(contents) ? contents : [contents],
-      config: {
-        systemInstruction,
-        temperature,
-      },
-    });
+    const response = await this._withRetry(() =>
+      this.ai.models.generateContent({
+        model: this.model,
+        contents: Array.isArray(contents) ? contents : [contents],
+        config: {
+          systemInstruction,
+          temperature,
+        },
+      })
+    );
 
     return response.text ? response.text.trim() : '';
   }
@@ -75,15 +110,17 @@ export class LlmClient {
     let attemptsLeft = repairAttempts;
 
     while (attemptsLeft >= 0) {
-      const response = await this.ai.models.generateContent({
-        model: this.model,
-        contents: [currentPrompt],
-        config: {
-          systemInstruction: `${systemInstruction}\nYou MUST output strictly valid JSON with no markdown formatting or commentary.`,
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        },
-      });
+      const response = await this._withRetry(() =>
+        this.ai.models.generateContent({
+          model: this.model,
+          contents: [currentPrompt],
+          config: {
+            systemInstruction: `${systemInstruction}\nYou MUST output strictly valid JSON with no markdown formatting or commentary.`,
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        })
+      );
 
       const rawText = response.text ? response.text.trim() : '{}';
       let parsedJson;
@@ -133,15 +170,17 @@ export class LlmClient {
     const { systemInstruction, prompt } = params;
     const functionDeclarations = getGeminiFunctionDeclarations();
 
-    const response = await this.ai.models.generateContent({
-      model: this.model,
-      contents: [prompt],
-      config: {
-        systemInstruction,
-        temperature: 0.1,
-        tools: [{ functionDeclarations }],
-      },
-    });
+    const response = await this._withRetry(() =>
+      this.ai.models.generateContent({
+        model: this.model,
+        contents: [prompt],
+        config: {
+          systemInstruction,
+          temperature: 0.1,
+          tools: [{ functionDeclarations }],
+        },
+      })
+    );
 
     // Check if the model called a function
     const functionCalls = response.functionCalls;

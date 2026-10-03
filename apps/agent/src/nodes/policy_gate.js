@@ -68,9 +68,35 @@ export async function policyGateNode(state, config) {
       };
     }
 
-    // If human modified any values, apply them
+    // If human modified any values, apply them to the DOM form and action args
     if (humanResponse && humanResponse.editedValues) {
       lastAction.args = { ...lastAction.args, ...humanResponse.editedValues };
+
+      if (page && typeof humanResponse.editedValues === 'object') {
+        try {
+          await page.evaluate((edits) => {
+            const inputs = Array.from(document.querySelectorAll('input, select, textarea'));
+            for (const [key, val] of Object.entries(edits)) {
+              for (const input of inputs) {
+                const label = document.querySelector(`label[for="${input.id}"]`);
+                const labelText = label ? label.textContent.trim().toLowerCase() : '';
+                const keyLower = key.toLowerCase();
+                if (
+                  input.name?.toLowerCase() === keyLower ||
+                  labelText.includes(keyLower) ||
+                  input.placeholder?.toLowerCase().includes(keyLower)
+                ) {
+                  input.value = val;
+                  input.dispatchEvent(new Event('input', { bubbles: true }));
+                  input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+              }
+            }
+          }, humanResponse.editedValues);
+        } catch (err) {
+          console.warn('Could not inject edited form values into page:', err.message);
+        }
+      }
     }
   }
 

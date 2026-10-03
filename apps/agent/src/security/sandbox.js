@@ -9,20 +9,18 @@ import fs from 'node:fs';
  * @param {string} inputPath - User or tool supplied path
  * @returns {string} Fully resolved safe absolute path
  */
-export function resolveSafePath(workspaceDir, inputPath) {
-  if (!inputPath || typeof inputPath !== 'string') {
-    throw new Error('A valid file path must be provided');
-  }
+export function resolveSafePath(workspaceDir, inputPath = '.') {
+  const cleanPath = (typeof inputPath === 'string' && inputPath.trim() !== '') ? inputPath : '.';
 
   // Normalize workspace path
   const normalizedWorkspace = path.resolve(workspaceDir);
 
   // If input is absolute, ensure it starts with workspaceDir
   let targetPath;
-  if (path.isAbsolute(inputPath)) {
-    targetPath = path.resolve(inputPath);
+  if (path.isAbsolute(cleanPath)) {
+    targetPath = path.resolve(cleanPath);
   } else {
-    targetPath = path.resolve(normalizedWorkspace, inputPath);
+    targetPath = path.resolve(normalizedWorkspace, cleanPath);
   }
 
   // Security check: Must reside strictly inside workspaceDir

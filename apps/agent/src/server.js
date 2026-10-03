@@ -60,7 +60,7 @@ app.post('/runs', async (req, res) => {
   }
 
   try {
-    const { runId, traceLogger } = await startAgentRun({
+    const { runId } = await startAgentRun({
       goal,
       policyOverrides,
       autoApprove: !!autoApprove,
@@ -162,15 +162,21 @@ app.post('/runs/:id/resume', async (req, res) => {
     return res.status(400).json({ error: 'Field "type" must be "approval" or "answer".' });
   }
 
-  try {
-    const result = await resumeAgentRun(id, { type, payload });
-    res.json({
-      status: result?.status || 'running',
-      runId: id,
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  const run = getRun(id);
+  if (!run) {
+    return res.status(404).json({ error: `Run "${id}" not found.` });
   }
+
+  // Acknowledge immediately so the client UI unblocks and closes modals without waiting for the full run to complete
+  res.json({
+    status: 'resuming',
+    runId: id,
+  });
+
+  // Continue workflow execution asynchronously; events stream via SSE
+  resumeAgentRun(id, { type, payload }).catch((err) => {
+    console.error(`Agent run "${id}" resume error:`, err.message);
+  });
 });
 
 // Abort run
@@ -186,6 +192,14 @@ app.post('/runs/:id/abort', async (req, res) => {
 
 // Export or start server
 export { app };
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Promise Rejection caught at server level:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception caught at server level:', err);
+});
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => {

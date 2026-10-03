@@ -29,6 +29,11 @@ export async function observeNode(state, config) {
 
       observationText = snapshot.flattenedText;
 
+      if (lastToolResult && (lastToolResult.result || lastToolResult.error)) {
+        const toolStr = JSON.stringify(lastToolResult.result || lastToolResult.error);
+        observationText += `\n\n[LATEST TOOL EXECUTION OUTPUT]\n${toolStr.length > 2000 ? toolStr.slice(0, 2000) + '... (truncated)' : toolStr}`;
+      }
+
       if (snapshot.screenshotPath) {
         newEvidence.push({
           type: 'screenshot',

@@ -76,12 +76,12 @@ export async function startAgentRun(params) {
       requireApprovalForWrites: true,
       askOnAmbiguity: true,
       allowedDomains: ['localhost', '127.0.0.1'],
-      maxToolCalls: 25,
+      maxToolCalls: 30,
       maxRetriesPerStep: 3,
       ...policyOverrides,
     },
     threadConfig: {
-      recursionLimit: 150,
+      recursionLimit: 300,
       configurable: {
         thread_id: runId,
         page,
@@ -96,7 +96,9 @@ export async function startAgentRun(params) {
     latestState: null,
   };
 
+  runContext.threadConfig.configurable.runContext = runContext;
   activeRuns.set(runId, runContext);
+
 
   // Execute graph execution loop
   const runPromise = (async () => {
@@ -125,10 +127,11 @@ export async function startAgentRun(params) {
       await cleanupRun(runId);
       return resultState;
     } catch (err) {
+      console.error(`Agent run "${runId}" encountered error:`, err.message);
       traceLogger.emit(EVENT_TYPES.RUN_FAILED, { error: err.message });
       runContext.status = 'failed';
       await cleanupRun(runId);
-      throw err;
+      return { runId, status: 'failed', error: err.message };
     }
   })();
 
@@ -219,31 +222,61 @@ export function getActiveRunLogger(runId) {
  * @returns {Object|null}
  */
 export function getRun(runId) {
-  const active = activeRuns.get(runId);
-  if (active) {
-    return {
-      runId,
-      status: active.status,
-      events: active.logger.getEvents(),
-      active: true,
-    };
+  const runDir = path.join(RUNS_ROOT, runId);
+  const reportPath = path.join(runDir, 'report.json');
+  let report = null;
+  if (fs.existsSync(reportPath)) {
+    try {
+      report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+    } catch {
+      // ignore
+    }
   }
 
-  // Check saved run on disk
-  const runDir = path.join(RUNS_ROOT, runId);
-  const tracePath = path.join(runDir, 'trace.jsonl');
-  const reportPath = path.join(runDir, 'report.json');
+  const active = activeRuns.get(runId);
+  if (active) {
+    const events = active.logger.getEvents();
+    let goal = active.goal || report?.goal || '';
+    let autoApprove = active.autoApprove || false;
+    let runStatus = active.status;
+    let summary = report?.summary || null;
 
-  if (fs.existsSync(runDir)) {
-    let report = null;
-    if (fs.existsSync(reportPath)) {
-      try {
-        report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-      } catch {
-        // ignore
+    for (const evt of events) {
+      if (evt.type === 'run.started') {
+        if (!goal && evt.data?.goal) goal = evt.data.goal;
+        if (evt.data?.autoApprove !== undefined) autoApprove = !!evt.data.autoApprove;
+      }
+      if (evt.type === 'run.completed') {
+        runStatus = 'completed';
+        if (!summary) summary = evt.data?.summary;
+      }
+      if (evt.type === 'run.failed') {
+        runStatus = 'failed';
+        if (!summary) summary = evt.data?.summary || evt.data?.error;
+      }
+      if (evt.type === 'run.aborted') {
+        runStatus = 'aborted';
       }
     }
 
+    const isStillActive = (runStatus === 'running' || runStatus === 'awaiting_human');
+
+    return {
+      runId,
+      goal,
+      autoApprove,
+      status: runStatus,
+      events,
+      finalReport: report || active.latestState?.finalReport || null,
+      active: isStillActive,
+    };
+  }
+
+
+  // Check saved run on disk
+  const tracePath = path.join(runDir, 'trace.jsonl');
+
+  if (fs.existsSync(runDir)) {
     const events = [];
     if (fs.existsSync(tracePath)) {
       const lines = fs.readFileSync(tracePath, 'utf8').split('\n').filter(Boolean);
@@ -256,9 +289,49 @@ export function getRun(runId) {
       }
     }
 
+    let goal = report?.goal || null;
+    let autoApprove = false;
+    let runStatus = report?.status || null;
+    let summary = report?.summary || null;
+
+    for (const evt of events) {
+      if (evt.type === 'run.started') {
+        if (!goal && evt.data?.goal) goal = evt.data.goal;
+        if (evt.data?.autoApprove !== undefined) autoApprove = !!evt.data.autoApprove;
+      }
+      if (evt.type === 'run.completed') {
+        if (!runStatus) runStatus = 'completed';
+        if (!summary) summary = evt.data?.summary;
+      }
+      if (evt.type === 'run.failed') {
+        if (!runStatus) runStatus = 'failed';
+        if (!summary) summary = evt.data?.summary || evt.data?.error;
+      }
+      if (evt.type === 'status.updated') {
+        if (!runStatus && evt.data?.status) runStatus = evt.data.status;
+      }
+    }
+
+    if (!runStatus) runStatus = report?.status || 'completed';
+
+    // Fallback report so ReportCard always renders for past completed/failed runs
+    if (!report && summary) {
+      report = {
+        runId,
+        goal: goal || 'Autonomous Agent Task',
+        status: runStatus,
+        summary: summary || 'Run finalized.',
+        outcome: summary,
+        extractedData: {},
+        evidence: [],
+      };
+    }
+
     return {
       runId,
-      status: report?.status || 'completed',
+      goal: goal || '',
+      autoApprove,
+      status: runStatus,
       events,
       finalReport: report,
       active: false,
@@ -283,9 +356,12 @@ export function listAllRuns() {
       if (run) {
         results.push({
           runId: run.runId,
+          goal: run.goal || run.finalReport?.goal || '',
+          autoApprove: run.autoApprove,
           status: run.status,
           eventsCount: run.events?.length || 0,
           summary: run.finalReport?.summary || '',
+          timestamp: run.events?.[0]?.timestamp || null,
         });
       }
     }
@@ -302,12 +378,21 @@ async function cleanupRun(runId) {
   const runContext = activeRuns.get(runId);
   if (runContext) {
     try {
-      await runContext.page.close().catch(() => {});
-      await runContext.context.close().catch(() => {});
-      await runContext.browser.close().catch(() => {});
+      await Promise.race([
+        Promise.all([
+          runContext.page?.close().catch(() => {}),
+          runContext.context?.close().catch(() => {}),
+          runContext.browser?.close().catch(() => {}),
+        ]),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
     } catch {
       // ignore
     }
-    // Do not delete immediately so subscribers can finish reading
+    // Evict after 10 seconds so SSE connections have finished receiving stream.ended
+    setTimeout(() => {
+      activeRuns.delete(runId);
+    }, 10000);
   }
 }
+

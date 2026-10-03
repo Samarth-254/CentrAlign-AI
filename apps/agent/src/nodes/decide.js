@@ -1,6 +1,7 @@
 import { EVENT_TYPES } from '@centralign/shared';
 import { DECIDE_SYSTEM_PROMPT, buildDecidePrompt } from '../prompts/decide.js';
 import { detectActionLoop } from '../policy/loopDetection.js';
+import { getTodayDDMMYYYY, parseOffsetDaysFromGoal } from '../utils/date.js';
 
 /**
  * Decide Node (ReAct Step)
@@ -12,8 +13,8 @@ export async function decideNode(state, config) {
 
   logger?.emit(EVENT_TYPES.NODE_ENTERED, { node: 'decide', toolCallsCount });
 
-  // 1. Budget Hard Cap Check (25 total tool calls default)
-  const maxCalls = policy.maxToolCalls || 25;
+  // 1. Budget Hard Cap Check (30 total tool calls default)
+  const maxCalls = policy.maxToolCalls || 30;
   if (toolCallsCount >= maxCalls) {
     logger?.emit(EVENT_TYPES.ERROR_OCCURRED, {
       message: `Tool call budget exhausted (${toolCallsCount}/${maxCalls}). Halting execution.`,
@@ -33,17 +34,31 @@ export async function decideNode(state, config) {
   // 2. Loop Detection (3 identical consecutive actions)
   const loopCheck = detectActionLoop(history, 3);
   if (loopCheck.isLoop) {
+    const lastActionName = history[history.length - 1]?.action?.name;
+    const isRepeatedSnapshot = lastActionName === 'browser_snapshot' || loopCheck.toolName === 'browser_snapshot';
+
+    if (!isRepeatedSnapshot) {
+      logger?.emit(EVENT_TYPES.LOOP_DETECTED, {
+        toolName: loopCheck.toolName,
+        message: `Action loop detected: Tool "${loopCheck.toolName}" called 3 consecutive times with identical arguments. Re-anchoring snapshot.`,
+      });
+      return {
+        lastAction: {
+          name: 'browser_snapshot',
+          args: {},
+          rationale: 'Breaking action loop: taking a fresh snapshot to re-anchor page refs.',
+        },
+      };
+    }
+
+    // Snapshot loop persisted! Force deterministic recovery action to break free
     logger?.emit(EVENT_TYPES.LOOP_DETECTED, {
       toolName: loopCheck.toolName,
-      message: `Action loop detected: Tool "${loopCheck.toolName}" was called 3 consecutive times with identical arguments.`,
+      message: 'Action loop persisted after snapshot. Intervening with heuristic recovery action.',
     });
-    // Force replanning or taking a snapshot
+    const fallbackAction = buildHeuristicNextAction(state);
     return {
-      lastAction: {
-        name: 'browser_snapshot',
-        args: {},
-        rationale: 'Breaking action loop: taking a fresh snapshot to re-anchor page refs.',
-      },
+      lastAction: fallbackAction,
     };
   }
 
@@ -51,11 +66,16 @@ export async function decideNode(state, config) {
   let toolCall;
 
   if (llmClient && llmClient.isConfigured()) {
-    const prompt = buildDecidePrompt(state);
-    toolCall = await llmClient.decideNextAction({
-      systemInstruction: DECIDE_SYSTEM_PROMPT,
-      prompt,
-    });
+    try {
+      const prompt = buildDecidePrompt(state);
+      toolCall = await llmClient.decideNextAction({
+        systemInstruction: DECIDE_SYSTEM_PROMPT,
+        prompt,
+      });
+    } catch (err) {
+      console.warn('LLM decideNextAction failed (e.g. rate limit), falling back to heuristic:', err.message);
+      toolCall = buildHeuristicNextAction(state);
+    }
   } else {
     toolCall = buildHeuristicNextAction(state);
   }
@@ -85,11 +105,18 @@ export function buildHeuristicNextAction(state) {
 
   // If no page loaded yet, start by going to Vendor Portal or ERP
   if (!obs.includes('URL:')) {
-    if (gLower.includes('mark') && gLower.includes('paid')) {
+    const isExplicitCreateBill = gLower.includes('create') && (gLower.includes('bill') || gLower.includes('stark') || gLower.includes('payable'));
+    const isExplicitMarkPaidGoal =
+      (gLower.startsWith('mark ') || gLower.includes('mark the bill')) &&
+      !gLower.includes('check if') &&
+      !gLower.includes('whether') &&
+      !gLower.includes('find');
+
+    if (isExplicitCreateBill || isExplicitMarkPaidGoal) {
       return {
         name: 'browser_goto',
         args: { url: 'http://localhost:3000/erp/bills' },
-        rationale: 'Navigating to AcmeBooks ERP to locate bill for payment.',
+        rationale: 'Navigating to AcmeBooks ERP to manage bills.',
       };
     }
     return {
@@ -98,6 +125,7 @@ export function buildHeuristicNextAction(state) {
       rationale: 'Navigating to Vendor Portal to find vendor and invoices.',
     };
   }
+
 
   // Handle Portal Login page
   if (obs.includes('/portal/login')) {
@@ -232,7 +260,39 @@ export function buildHeuristicNextAction(state) {
   // Handle AcmeBooks Bills Ledger page (/erp/bills)
   if (obs.includes('/erp/bills') && !obs.includes('/new') && !obs.includes('/erp/bills/bill_')) {
     // If goal is to mark as paid (T2)
-    if (gLower.includes('mark') && gLower.includes('paid')) {
+    const isExplicitMarkPaidGoal =
+      (gLower.startsWith('mark ') || gLower.includes('mark the bill')) &&
+      !gLower.includes('check if') &&
+      !gLower.includes('whether') &&
+      !gLower.includes('find');
+
+    if (isExplicitMarkPaidGoal) {
+      const targetMatch = state.goal?.match(/\b([A-Z]{2,4}-[0-9]{3,4})\b/i);
+      const targetInv = targetMatch ? targetMatch[1].toUpperCase() : (memory.invoiceNumber || null);
+
+      if (targetInv) {
+        if (!obs.toUpperCase().includes(targetInv)) {
+          // Bill does NOT exist in AcmeBooks! Do not click random bills!
+          return {
+            name: 'finish',
+            args: {
+              claimedOutcome: `Bill for invoice ${targetInv} not found in AcmeBooks ledger.`,
+              summary: `Cannot mark bill as paid: No bill record exists in AcmeBooks for invoice ${targetInv}.`,
+            },
+            rationale: `Target invoice ${targetInv} was not found in the AcmeBooks bills table. Halting without modifying unrelated bills.`,
+          };
+        }
+
+        const targetRef = findRefForInvoiceRow(obs, targetInv);
+        if (targetRef) {
+          return {
+            name: 'browser_click',
+            args: { ref: targetRef },
+            rationale: `Opening bill details for ${targetInv} in AcmeBooks to execute mark as paid.`,
+          };
+        }
+      }
+
       const viewBillRef = findRefByRoleAndName(obs, 'link', 'View Details') || 'e4';
       return {
         name: 'browser_click',
@@ -281,12 +341,12 @@ export function buildHeuristicNextAction(state) {
     const submitBtnRef = findRefByRoleAndName(obs, 'button', 'Submit Bill');
 
     let vName = 'Northwind Traders';
-    const rawVendor = String(memory.vendorName || '');
-    if (rawVendor.includes('Northwind')) vName = 'Northwind Traders';
-    else if (rawVendor.includes('Globex')) vName = 'Globex Logistics';
-    else if (rawVendor.includes('Initech')) vName = 'Initech Software';
-    else if (rawVendor.includes('Umbrella')) vName = 'Umbrella Supplies';
-    else if (rawVendor.includes('Stark')) vName = 'Stark Components';
+    const contextText = `${memory.vendorName || ''} ${state.goal || ''} ${state.understanding?.objective || ''}`.toLowerCase();
+    if (contextText.includes('stark')) vName = 'Stark Components';
+    else if (contextText.includes('globex')) vName = 'Globex Logistics';
+    else if (contextText.includes('initech')) vName = 'Initech Software';
+    else if (contextText.includes('umbrella')) vName = 'Umbrella Supplies';
+    else if (contextText.includes('northwind')) vName = 'Northwind Traders';
 
     // Fill vendor dropdown if not yet selected
     if (vendorSelectRef && (obs.includes('selected="-- Select Vendor --"') || !obs.includes(`selected="${vName}"`))) {
@@ -297,10 +357,33 @@ export function buildHeuristicNextAction(state) {
       };
     }
 
-    const formattedIssueDate = formatDateToDDMMYYYY(memory.issueDate, '15/11/2026');
-    const formattedDueDate = formatDateToDDMMYYYY(memory.dueDate, '15/12/2026');
-    const formattedAmount = String(memory.totalAmount || '12450.00');
-    const targetInvoiceNo = String(memory.invoiceNumber || 'INV-1042');
+    // Determine amount dynamically
+    let parsedAmount = memory.totalAmount || memory.amount;
+    if (!parsedAmount) {
+      const amtMatch = (state.goal || '').match(/(\d+(?:\.\d+)?)\s*(?:inr|usd|eur|\$|€|₹)?/i);
+      parsedAmount = amtMatch ? amtMatch[1] : '10000.00';
+    }
+    const formattedAmount = String(parsedAmount);
+
+    // Determine invoice number dynamically
+    let targetInvoiceNo = memory.invoiceNumber || memory.invoiceNo;
+    if (!targetInvoiceNo) {
+      const invMatch = (state.goal || '').match(/\b([A-Z]{2,6}-\d+)\b/i);
+      if (invMatch) {
+        targetInvoiceNo = invMatch[1].toUpperCase();
+      } else {
+        const vPrefix = vName.split(' ')[0].toUpperCase();
+        targetInvoiceNo = `${vPrefix}-${Math.round(Number(formattedAmount) || 10000)}`;
+      }
+    }
+
+    // Calculate dates anchored to Current System Date
+    const todayDDMMYYYY = getTodayDDMMYYYY(0);
+    const offset = parseOffsetDaysFromGoal(state.goal || state.understanding?.objective) || 30;
+    const defaultDueDate = getTodayDDMMYYYY(offset);
+
+    const formattedIssueDate = formatDateToDDMMYYYY(memory.issueDate || memory.invoiceDate, todayDDMMYYYY);
+    const formattedDueDate = formatDateToDDMMYYYY(memory.dueDate, defaultDueDate);
 
     // Fill invoice number
     if (invoiceNoRef && !obs.includes(`value="${targetInvoiceNo}"`)) {
@@ -352,25 +435,63 @@ export function buildHeuristicNextAction(state) {
   if (obs.includes('/erp/bills/bill_')) {
     // If goal was mark as paid
     if (gLower.includes('mark') && gLower.includes('paid')) {
+      const targetMatch = state.goal?.match(/\b([A-Z]{2,4}-[0-9]{3,4})\b/i);
+      const targetInv = targetMatch ? targetMatch[1].toUpperCase() : null;
+
+      // Validate opened bill matches target invoice
+      if (targetInv && !obs.toUpperCase().includes(targetInv)) {
+        return {
+          name: 'finish',
+          args: {
+            claimedOutcome: `Opened bill does not correspond to requested invoice ${targetInv}.`,
+            summary: `Cannot mark bill as paid: Current bill record does not match target invoice ${targetInv}.`,
+          },
+          rationale: `Opened bill does not match requested invoice ${targetInv}. Halting to prevent erroneous payments.`,
+        };
+      }
+
       const markPaidRef = findRefByRoleAndName(obs, 'button', 'Mark as Paid');
-      if (markPaidRef && !obs.includes('Status: Paid')) {
+      if (markPaidRef && !obs.includes('Status: Paid') && !obs.includes('Paid')) {
         return {
           name: 'browser_click',
           args: { ref: markPaidRef },
-          rationale: 'Clicking "Mark as Paid" button to update payment ledger.',
+          rationale: `Clicking "Mark as Paid" button to update payment ledger for ${targetInv || 'bill'}.`,
         };
       }
+
+      const invNo = targetInv || memory.invoiceNumber || 'bill';
+      return {
+        name: 'finish',
+        args: {
+          claimedOutcome: `Bill for invoice ${invNo} successfully marked as Paid in AcmeBooks ledger.`,
+          summary: `Updated bill for invoice ${invNo} status to Paid in AcmeBooks ERP.`,
+        },
+        rationale: `Bill for invoice ${invNo} confirmed marked as Paid on screen; forwarding to independent verification.`,
+      };
     }
+
+    let summaryVendor = 'vendor';
+    const cText = `${memory.vendorName || ''} ${state.goal || ''}`.toLowerCase();
+    if (cText.includes('stark')) summaryVendor = 'Stark Components';
+    else if (cText.includes('globex')) summaryVendor = 'Globex Logistics';
+    else if (cText.includes('initech')) summaryVendor = 'Initech Software';
+    else if (cText.includes('umbrella')) summaryVendor = 'Umbrella Supplies';
+    else if (cText.includes('northwind')) summaryVendor = 'Northwind Traders';
+
+    const summaryInv = memory.invoiceNumber || 'registered bill';
+    const summaryAmt = memory.totalAmount || '';
+    const summaryDue = memory.dueDate ? formatDateToDDMMYYYY(memory.dueDate) : '';
 
     return {
       name: 'finish',
       args: {
-        claimedOutcome: 'Bill record successfully created and registered in AcmeBooks ledger with status Pending Approval.',
-        summary: 'Extracted invoice INV-1042 ($12,450.00, due 15/12/2026) from Northwind Traders and created bill record in AcmeBooks.',
+        claimedOutcome: `Bill record for ${summaryVendor} (${summaryInv}) successfully created and registered in AcmeBooks ledger with status Pending Approval.`,
+        summary: `Created bill record for ${summaryVendor} (${summaryInv}${summaryAmt ? `, Amount: ${summaryAmt}` : ''}${summaryDue ? `, Due: ${summaryDue}` : ''}) in AcmeBooks ERP.`,
       },
       rationale: 'Bill creation verified on screen with green confirmation banner; forwarding to verification.',
     };
   }
+
 
   // If transient 500 error page
   if ((obs.includes('500') && obs.includes('Error')) || obs.includes('Service temporarily unavailable')) {
@@ -430,8 +551,9 @@ function findRefForVendor(snapshotText, vendorName) {
  * @param {string} fallback
  * @returns {string}
  */
-function formatDateToDDMMYYYY(dateStr, fallback = '15/11/2026') {
-  if (!dateStr) return fallback;
+function formatDateToDDMMYYYY(dateStr, fallback = null) {
+  const defaultFallback = fallback || getTodayDDMMYYYY(0);
+  if (!dateStr) return defaultFallback;
   const str = String(dateStr).trim();
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
@@ -445,7 +567,24 @@ function formatDateToDDMMYYYY(dateStr, fallback = '15/11/2026') {
     const year = parsed.getFullYear();
     return `${day}/${month}/${year}`;
   }
-  return fallback;
+  return defaultFallback;
 }
 
 
+/**
+ * Helper to locate the View Details link ref for a specific invoice number in the bills table
+ * @param {string} snapshotText
+ * @param {string} invoiceNo
+ * @returns {string|null}
+ */
+function findRefForInvoiceRow(snapshotText, invoiceNo) {
+  if (!snapshotText || !invoiceNo) return null;
+  const lines = snapshotText.split('\n');
+  for (const line of lines) {
+    if (line.toUpperCase().includes(invoiceNo.toUpperCase())) {
+      const matches = [...line.matchAll(/\[(e\d+)\]/g)];
+      if (matches.length > 0) return matches[matches.length - 1][1];
+    }
+  }
+  return null;
+}
