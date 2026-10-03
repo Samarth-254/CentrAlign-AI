@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+.DS_Store
+*.local
+.env
+.env*.local
+apps/agent/runs/
+apps/web/data/*.db*
+!apps/web/data/.gitkeep
+test-results/
+playwright-report/
