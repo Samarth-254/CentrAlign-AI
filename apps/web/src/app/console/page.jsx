@@ -66,7 +66,15 @@ export default function AgentConsolePage() {
 
   const handleSelectRun = async (runId) => {
     try {
-      await loadPastRunDetails(runId);
+      const details = await loadPastRunDetails(runId);
+      if (details) {
+        if (details.goal) {
+          setGoal(details.goal);
+        }
+        if (details.autoApprove !== undefined) {
+          setAutoApprove(details.autoApprove);
+        }
+      }
       setMobileRailOpen(false);
     } catch (err) {
       showToast(err.message, 'error');
@@ -94,7 +102,10 @@ export default function AgentConsolePage() {
           runs={pastRuns}
           activeRunId={activeRunId}
           onSelectRun={handleSelectRun}
-          onNewTask={resetActiveRun}
+          onNewTask={() => {
+            resetActiveRun();
+            setGoal('');
+          }}
           isOpen={mobileRailOpen}
           onCloseMobile={() => setMobileRailOpen(false)}
         />

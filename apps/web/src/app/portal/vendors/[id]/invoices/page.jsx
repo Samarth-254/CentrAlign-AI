@@ -155,7 +155,7 @@ export default async function VendorInvoicesPage({ params, searchParams }) {
           {/* Pagination Controls */}
           <div className="bg-[#161616] px-4 py-3 border-t border-[#242424] flex items-center justify-between">
             <div className="text-[12px] font-mono text-[#8C8C8C]">
-              Showing {offset + 1}–{Math.min(offset + pageSize, totalCount)} of {totalCount} invoices
+              Showing {offset + 1} - {Math.min(offset + pageSize, totalCount)} of {totalCount} invoices
             </div>
             <div className="flex items-center gap-2">
               {page > 1 ? (

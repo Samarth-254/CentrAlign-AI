@@ -77,6 +77,8 @@ export function RunHistory({
               return (
                 <button
                   key={run.runId}
+                  id={`run-history-${run.runId}`}
+                  data-testid={`run-item-${run.runId}`}
                   type="button"
                   onClick={() => onSelectRun(run.runId)}
                   className={`w-full text-left p-3 transition-colors cursor-pointer block ${

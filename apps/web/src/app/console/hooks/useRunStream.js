@@ -85,9 +85,25 @@ export function useRunStream(onStreamEnded) {
         setPendingApproval(data.payload);
         break;
 
+      case EVENT_TYPES.APPROVAL_RESOLVED:
+        setPendingApproval(null);
+        setRunStatus((prev) => (['completed', 'failed', 'aborted'].includes(prev) ? prev : 'running'));
+        break;
+
       case EVENT_TYPES.QUESTION_REQUESTED:
         setRunStatus('awaiting_human');
         setPendingQuestion(data);
+        break;
+
+      case EVENT_TYPES.QUESTION_RESOLVED:
+        setPendingQuestion(null);
+        setRunStatus((prev) => (['completed', 'failed', 'aborted'].includes(prev) ? prev : 'running'));
+        break;
+
+      case EVENT_TYPES.STATUS_UPDATED:
+        if (data?.status) {
+          setRunStatus((prev) => (['completed', 'failed', 'aborted'].includes(prev) ? prev : data.status));
+        }
         break;
 
       case EVENT_TYPES.VERIFICATION_STARTED:
@@ -211,16 +227,22 @@ export function useRunStream(onStreamEnded) {
   const respondToApproval = useCallback(
     async (approved, editedValues) => {
       if (!activeRunId) return;
-      await fetch(`${AGENT_SERVER_URL}/runs/${activeRunId}/resume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'approval',
-          payload: { approved, editedValues: approved ? editedValues : undefined },
-        }),
-      });
+      // Immediately dismiss modal and update status optimistically
       setPendingApproval(null);
-      setRunStatus('running');
+      setRunStatus((prev) => (['completed', 'failed', 'aborted'].includes(prev) ? prev : 'running'));
+
+      try {
+        await fetch(`${AGENT_SERVER_URL}/runs/${activeRunId}/resume`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'approval',
+            payload: { approved, editedValues: approved ? editedValues : undefined },
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to submit approval:', err);
+      }
     },
     [activeRunId]
   );
@@ -228,16 +250,22 @@ export function useRunStream(onStreamEnded) {
   const respondToQuestion = useCallback(
     async (answer) => {
       if (!activeRunId) return;
-      await fetch(`${AGENT_SERVER_URL}/runs/${activeRunId}/resume`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'answer',
-          payload: { answer },
-        }),
-      });
+      // Immediately dismiss question modal and update status optimistically
       setPendingQuestion(null);
-      setRunStatus('running');
+      setRunStatus((prev) => (['completed', 'failed', 'aborted'].includes(prev) ? prev : 'running'));
+
+      try {
+        await fetch(`${AGENT_SERVER_URL}/runs/${activeRunId}/resume`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'answer',
+            payload: { answer },
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to submit question answer:', err);
+      }
     },
     [activeRunId]
   );
@@ -249,20 +277,69 @@ export function useRunStream(onStreamEnded) {
   }, [activeRunId]);
 
   const loadPastRunDetails = useCallback(async (runId) => {
+    // 1. Close any active SSE connection to prevent live stream from overwriting history
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    // 2. Clear running timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
     const res = await fetch(`${AGENT_SERVER_URL}/runs/${runId}`);
     if (!res.ok) throw new Error('Failed to load past run details');
     const data = await res.json();
 
+    const runEvents = data.events || [];
+    setEvents(runEvents);
+
+    const hasCompletedEvent = runEvents.some((e) => e.type === EVENT_TYPES.RUN_COMPLETED);
+    const hasFailedEvent = runEvents.some((e) => e.type === EVENT_TYPES.RUN_FAILED);
+    const hasAbortedEvent = runEvents.some((e) => e.type === EVENT_TYPES.RUN_ABORTED);
+
+    let determinedStatus = data.status;
+    if (hasCompletedEvent || data.finalReport?.status === 'completed') {
+      determinedStatus = 'completed';
+    } else if (hasFailedEvent || data.finalReport?.status === 'failed') {
+      determinedStatus = 'failed';
+    } else if (hasAbortedEvent) {
+      determinedStatus = 'aborted';
+    }
+
     setActiveRunId(runId);
-    setRunStatus(data.status);
-    setEvents(data.events || []);
+    setRunStatus(determinedStatus);
 
     let loadedUnderstanding = null;
     let loadedPlan = [];
     const loadedMemory = {};
     let loadedVerification = null;
+    let lastNode = null;
+    let runGoal = data.goal || '';
+    let runAutoApprove = data.autoApprove !== undefined ? data.autoApprove : false;
 
-    for (const evt of data.events || []) {
+    // Calculate actual elapsed duration from events
+    if (runEvents.length > 1) {
+      const startT = new Date(runEvents[0].timestamp).getTime();
+      const endT = new Date(runEvents[runEvents.length - 1].timestamp).getTime();
+      if (!isNaN(startT) && !isNaN(endT) && endT >= startT) {
+        setElapsedSeconds(Math.max(1, Math.round((endT - startT) / 1000)));
+      } else {
+        setElapsedSeconds(0);
+      }
+    } else {
+      setElapsedSeconds(0);
+    }
+
+    for (const evt of runEvents) {
+      if (evt.type === EVENT_TYPES.RUN_STARTED) {
+        if (!runGoal && evt.data?.goal) runGoal = evt.data.goal;
+        if (evt.data?.autoApprove !== undefined) runAutoApprove = evt.data.autoApprove;
+      }
+      if (evt.type === EVENT_TYPES.NODE_ENTERED && evt.data?.node) {
+        lastNode = evt.data.node;
+      }
       if (evt.type === EVENT_TYPES.UNDERSTANDING_PRODUCED) loadedUnderstanding = evt.data;
       if (evt.type === EVENT_TYPES.PLAN_CREATED || evt.type === EVENT_TYPES.PLAN_UPDATED) {
         loadedPlan = evt.data.steps || [];
@@ -271,30 +348,71 @@ export function useRunStream(onStreamEnded) {
         loadedMemory[evt.data.key] = { value: evt.data.value, provenance: evt.data.provenance };
       }
       if (evt.type === EVENT_TYPES.VERIFICATION_COMPLETED) {
+        const lastCompIdx = runEvents.lastIndexOf(evt);
+        let prevStartIdx = -1;
+        for (let i = lastCompIdx - 1; i >= 0; i--) {
+          if (runEvents[i].type === EVENT_TYPES.VERIFICATION_STARTED) {
+            prevStartIdx = i;
+            break;
+          }
+        }
+        const relevantChecks = runEvents
+          .slice(prevStartIdx !== -1 ? prevStartIdx : 0, lastCompIdx)
+          .filter((e) => e.type === EVENT_TYPES.VERIFICATION_CHECK)
+          .map((e) => e.data);
+
         loadedVerification = {
           overall: evt.data.overall,
           summary: evt.data.summary,
-          checks: (data.events || [])
-            .filter((e) => e.type === EVENT_TYPES.VERIFICATION_CHECK)
-            .map((e) => e.data),
+          checks: relevantChecks,
         };
       }
+
+    }
+
+    // Set activeNode for PipelineBar
+    if (determinedStatus === 'completed' || determinedStatus === 'failed' || determinedStatus === 'aborted') {
+      setActiveNode('complete');
+    } else {
+      setActiveNode(lastNode || 'decide');
     }
 
     // If past run was completed successfully, ensure steps reflect done status
-    if (data.status === 'completed' && loadedPlan.length > 0) {
+    if (determinedStatus === 'completed' && loadedPlan.length > 0) {
       loadedPlan = loadedPlan.map((s) => ({
         ...s,
         status: s.status === 'failed' ? 'failed' : 'done',
       }));
     }
 
+    let reportToSet = data.finalReport;
+    if (!reportToSet && determinedStatus === 'completed') {
+      const summaryEvt = runEvents.find((e) => e.type === EVENT_TYPES.RUN_COMPLETED);
+      reportToSet = {
+        runId,
+        goal: runGoal,
+        status: 'completed',
+        summary: summaryEvt?.data?.summary || 'Task completed and independently verified.',
+        outcome: summaryEvt?.data?.summary || 'Objective achieved',
+        extractedData: summaryEvt?.data?.extractedData || {},
+        evidence: [],
+      };
+    }
+
     setUnderstanding(loadedUnderstanding);
     setPlan(loadedPlan);
     setMemory(loadedMemory);
     setVerification(loadedVerification);
-    setFinalReport(data.finalReport);
+    setFinalReport(reportToSet);
+
+    return {
+      runId,
+      goal: runGoal,
+      autoApprove: runAutoApprove,
+      status: determinedStatus,
+    };
   }, []);
+
 
   const resetActiveRun = useCallback(() => {
     if (eventSourceRef.current) eventSourceRef.current.close();

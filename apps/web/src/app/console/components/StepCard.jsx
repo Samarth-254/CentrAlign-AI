@@ -124,14 +124,15 @@ export function StepCard({ step, onOpenScreenshot }) {
             <button
               type="button"
               onClick={() => onOpenScreenshot && onOpenScreenshot(screenshot)}
-              className="relative group border border-[#242424] hover:border-[#FF6A1A] rounded-[4px] overflow-hidden shrink-0 cursor-pointer"
+              className="relative group border border-[#242424] hover:border-[#FF6A1A] rounded-[4px] overflow-hidden shrink-0 cursor-pointer bg-[#161616]"
               title="Click to enlarge screenshot"
             >
               <img
                 src={screenshot}
                 alt="Step observation"
-                className="w-[72px] h-[45px] object-cover"
+                className="w-[72px] h-[45px] object-cover block"
                 loading="lazy"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-mono transition-opacity">
                 🔍

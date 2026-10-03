@@ -25,11 +25,48 @@ export function ReportCard({
 
   const isSuccess = report.status === 'completed';
 
-  const copySummary = () => {
-    const text = `CentrAlign Run Report (${report.status}):\n${report.summary}`;
-    navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copySummary = async () => {
+    let summaryText = report.summary || report.outcome || '';
+    if (verification?.checks && verification.checks.length > 0) {
+      const checksText = verification.checks
+        .map((c) => `  ${c.passed ? '✓' : '✕'} ${c.criterion} (${c.evidence || c.explanation || 'No evidence'})`)
+        .join('\n');
+      summaryText += `\n\nVerification Audit:\n${checksText}`;
+    }
+    const text = `CentrAlign Run Report (${report.status || 'unknown'}):\n${summaryText || 'Execution finished.'}`;
+
+    let succeeded = false;
+    if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      try {
+        await navigator.clipboard.writeText(text);
+        succeeded = true;
+      } catch (err) {
+        console.warn('navigator.clipboard.writeText failed, falling back to execCommand:', err);
+      }
+    }
+
+    if (!succeeded && typeof document !== 'undefined') {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.setAttribute('readonly', '');
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        succeeded = document.execCommand('copy');
+        textArea.remove();
+      } catch (err) {
+        console.warn('document.execCommand copy fallback failed:', err);
+      }
+    }
+
+    if (succeeded) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const downloadJson = () => {
@@ -149,22 +186,29 @@ export function ReportCard({
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="sm" onClick={copySummary}>
+          <Button
+            id="copy-report-btn"
+            variant="ghost"
+            size="sm"
+            onClick={copySummary}
+            className={copied ? 'text-[#3FB950] font-semibold' : ''}
+          >
             {copied ? '✓ Copied' : 'Copy'}
           </Button>
-          <Button variant="secondary" size="sm" onClick={downloadJson}>
+          <Button id="download-json-btn" variant="secondary" size="sm" onClick={downloadJson}>
             JSON
           </Button>
-          <Button variant="secondary" size="sm" onClick={downloadHtml}>
+          <Button id="download-html-btn" variant="secondary" size="sm" onClick={downloadHtml}>
             HTML
           </Button>
           {onToggleCollapse && (
-            <Button variant="ghost" size="sm" onClick={onToggleCollapse} title="Collapse report card">
+            <Button id="collapse-report-btn" variant="ghost" size="sm" onClick={onToggleCollapse} title="Collapse report card">
               ▲ Collapse
             </Button>
           )}
           {onClose && (
             <Button
+              id="close-report-btn"
               variant="ghost"
               size="sm"
               onClick={onClose}
@@ -179,7 +223,7 @@ export function ReportCard({
 
       {/* Summary */}
       <p className="text-[13px] text-[#EDEDED] leading-relaxed mb-3">
-        {report.summary}
+        {report.summary || report.outcome || verification?.summary || (isSuccess ? 'Task completed successfully.' : 'Execution failed during verification or policy evaluation.')}
       </p>
 
       {/* Extracted Data Grid */}

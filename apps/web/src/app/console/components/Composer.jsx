@@ -136,6 +136,7 @@ export function Composer({
         }`}
       >
         <textarea
+          id="composer-goal"
           rows={2}
           value={goal}
           onChange={(e) => setGoal(e.target.value)}

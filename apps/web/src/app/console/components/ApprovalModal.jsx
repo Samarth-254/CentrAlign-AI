@@ -18,9 +18,8 @@ export function ApprovalModal({
   const [editedValues, setEditedValues] = useState({});
 
   useEffect(() => {
-    if (payload?.values) {
-      setEditedValues({ ...payload.values });
-    }
+    const vals = payload?.currentFormValues || payload?.values || {};
+    setEditedValues({ ...vals });
   }, [payload]);
 
   if (!isOpen || !payload) return null;
@@ -30,7 +29,8 @@ export function ApprovalModal({
   };
 
   const handleApprove = () => {
-    onApprove(isEditing ? editedValues : payload.values);
+    const baseVals = payload?.currentFormValues || payload?.values || {};
+    onApprove(isEditing ? editedValues : baseVals);
   };
 
   return (
@@ -74,23 +74,31 @@ export function ApprovalModal({
             </div>
 
             <div className="divide-y divide-[#242424]">
-              {Object.entries(editedValues).map(([k, v]) => (
-                <div key={k} className="px-3.5 py-2 flex items-center justify-between gap-3 text-[12px]">
-                  <span className="font-mono text-[#8C8C8C] shrink-0">{k}</span>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={v ?? ''}
-                      onChange={(e) => handleFieldChange(k, e.target.value)}
-                      className="bg-[#111111] text-[#EDEDED] font-mono text-[12px] px-2 py-1 rounded-[4px] border border-[#333333] focus:border-[#FF6A1A] focus:outline-none w-2/3 text-right"
-                    />
-                  ) : (
-                    <span className="font-mono text-[#EDEDED] font-semibold text-right break-all">
-                      {String(v)}
-                    </span>
-                  )}
+              {Object.entries(editedValues).length === 0 ? (
+                <div className="px-3.5 py-3 text-[12px] text-[#8C8C8C] italic text-center">
+                  No editable form fields detected on current page.
                 </div>
-              ))}
+              ) : (
+                Object.entries(editedValues).map(([k, v]) => (
+                  <div key={k} className="px-3.5 py-2 flex items-center justify-between gap-3 text-[12px]">
+                    <span className="font-mono text-[#8C8C8C] shrink-0 text-left max-w-[45%] truncate" title={k}>
+                      {k}
+                    </span>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={v ?? ''}
+                        onChange={(e) => handleFieldChange(k, e.target.value)}
+                        className="bg-[#111111] text-[#EDEDED] font-mono text-[12px] px-2 py-1 rounded-[4px] border border-[#333333] focus:border-[#FF6A1A] focus:outline-none w-3/5 text-right"
+                      />
+                    ) : (
+                      <span className="font-mono text-[#EDEDED] font-semibold text-right break-all">
+                        {String(v)}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

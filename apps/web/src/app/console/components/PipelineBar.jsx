@@ -15,29 +15,44 @@ export function PipelineBar({ activeNode = null, runStatus = 'idle' }) {
   ];
 
   // Map active node name to pipeline step id
-  const resolveCurrentStepIndex = () => {
-    if (runStatus === 'completed' || runStatus === 'failed' || runStatus === 'aborted') {
-      return 5; // Complete
-    }
-    if (!activeNode) return -1;
-    if (activeNode.includes('understand')) return 0;
-    if (activeNode.includes('plan')) return 1;
-    if (activeNode.includes('decide') || activeNode.includes('policy') || activeNode.includes('execute')) return 2;
-    if (activeNode.includes('observe') || activeNode.includes('reflect')) return 3;
-    if (activeNode.includes('verify')) return 4;
-    if (activeNode.includes('finalize')) return 5;
+  const getNodeStepIndex = (node) => {
+    if (!node) return 0;
+    const n = node.toLowerCase();
+    if (n.includes('understand')) return 0;
+    if (n.includes('plan')) return 1;
+    if (n.includes('decide') || n.includes('policy') || n.includes('execute')) return 2;
+    if (n.includes('observe') || n.includes('reflect')) return 3;
+    if (n.includes('verify')) return 4;
+    if (n.includes('finalize')) return 5;
     return 2;
   };
 
-  const currentIndex = resolveCurrentStepIndex();
+  const activeIndex = getNodeStepIndex(activeNode);
 
   return (
     <div className="px-4 py-2 bg-[#111111] border-b border-[#242424] flex items-center justify-between select-none overflow-x-auto text-[12px]">
       <div className="flex items-center gap-2 sm:gap-4 w-full justify-between max-w-2xl mx-auto">
         {steps.map((step, idx) => {
-          const isDone = currentIndex > idx || (idx === 5 && runStatus === 'completed');
-          const isActive = currentIndex === idx && runStatus === 'running';
-          const isFailed = idx === 5 && runStatus === 'failed';
+          let isDone = false;
+          let isActive = false;
+          let isFailed = false;
+
+          if (runStatus === 'completed') {
+            isDone = true;
+          } else if (runStatus === 'failed' || runStatus === 'aborted') {
+            if (idx < activeIndex) {
+              isDone = true;
+            } else if (idx === activeIndex) {
+              isFailed = true;
+            }
+            // idx > activeIndex remains pending/unreached
+          } else if (runStatus === 'running' || runStatus === 'awaiting_human') {
+            if (idx < activeIndex) {
+              isDone = true;
+            } else if (idx === activeIndex) {
+              isActive = true;
+            }
+          }
 
           return (
             <div key={step.id} className="flex items-center gap-2">
