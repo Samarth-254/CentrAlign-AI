@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge.jsx';
+import { FormattedOutput } from './FormattedOutput.jsx';
 
 /**
  * StepCard representing a single execution step or milestone in the timeline.
@@ -10,7 +11,7 @@ export function StepCard({ step, onOpenScreenshot }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const {
-    id,
+    id: _id,
     type,
     tool,
     rationale,
@@ -21,7 +22,7 @@ export function StepCard({ step, onOpenScreenshot }) {
     retryCount,
     screenshot,
     url,
-    timestamp,
+    timestamp: _timestamp,
     status = 'completed',
   } = step;
 
@@ -31,18 +32,6 @@ export function StepCard({ step, onOpenScreenshot }) {
   const formatDuration = (ms) => {
     if (!ms && ms !== 0) return '';
     return `${ms}ms`;
-  };
-
-  // Mask secrets in args string representation
-  const formatArgs = (argsObj) => {
-    if (!argsObj) return '';
-    try {
-      const cloned = JSON.parse(JSON.stringify(argsObj));
-      const str = JSON.stringify(cloned, null, 2);
-      return str.replace(/\{\{secret:([A-Za-z0-9_]+)\}\}/g, '••••••••');
-    } catch {
-      return String(argsObj);
-    }
   };
 
   const getStatusIcon = () => {
@@ -151,25 +140,15 @@ export function StepCard({ step, onOpenScreenshot }) {
           )}
         </div>
 
-        {/* Collapsible Details */}
+        {/* Collapsible Details in clean formatted presentation */}
         {detailsOpen && (
-          <div className="mt-2.5 pt-2 border-t border-[#1C1C1C] flex flex-col gap-2 font-mono text-[11px]">
-            {args && (
-              <div>
-                <span className="text-[#5E5E5E] block mb-1">Tool Arguments:</span>
-                <pre className="bg-[#161616] border border-[#242424] p-2 rounded-[4px] text-[#8C8C8C] overflow-x-auto whitespace-pre-wrap">
-                  {formatArgs(args)}
-                </pre>
-              </div>
+          <div className="mt-2.5 pt-2 border-t border-[#1C1C1C] flex flex-col gap-2">
+            {args && Object.keys(args).length > 0 && (
+              <FormattedOutput data={args} label="Tool Arguments" />
             )}
 
             {result && !result.summary && (
-              <div>
-                <span className="text-[#5E5E5E] block mb-1">Execution Output:</span>
-                <pre className="bg-[#161616] border border-[#242424] p-2 rounded-[4px] text-[#8C8C8C] overflow-x-auto whitespace-pre-wrap">
-                  {typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)}
-                </pre>
-              </div>
+              <FormattedOutput data={result} label="Execution Output" />
             )}
           </div>
         )}
