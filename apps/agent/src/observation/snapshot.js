@@ -118,7 +118,7 @@ export async function getPageSnapshot(page, options = {}) {
     );
     const alerts = alertElements
       .map((el) => el.innerText.trim())
-      .filter((text) => text.length > 0 && text.length < 300);
+      .filter((text) => text.length > 0 && text !== '*' && text.length < 300);
 
     // Collect headings
     const headingElements = Array.from(document.querySelectorAll('h1, h2, h3'));

@@ -140,9 +140,9 @@ export const browserTools = {
 
     // Can match by value or label
     try {
-      await el.selectOption({ label: value });
+      await el.selectOption({ label: value }, { timeout: 3000 });
     } catch {
-      await el.selectOption({ value: value });
+      await el.selectOption({ value: value }, { timeout: 3000 });
     }
 
     const snapshot = await getPageSnapshot(page, {

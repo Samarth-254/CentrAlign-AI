@@ -76,6 +76,7 @@ export default async function VendorsPage() {
                     href={`/portal/vendors/${vendor.id}/invoices`}
                     className="inline-flex items-center text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors"
                     id={`view-vendor-${vendor.slug}`}
+                    aria-label={`View Invoices for ${vendor.name}`}
                   >
                     View Invoices &rarr;
                   </Link>
