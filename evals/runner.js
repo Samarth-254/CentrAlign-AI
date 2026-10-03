@@ -177,7 +177,7 @@ async function runSingleTask(task) {
   }
 
   const durationMs = Date.now() - startTime;
-  const runRecord = getRun(runId);
+  const _runRecord = getRun(runId);
 
   // Evaluate programmatic ground-truth oracle
   const oracleResult = evaluateOracle(task);
@@ -311,10 +311,13 @@ async function main() {
     mdContent += `| **${s.taskId}** | ${s.name} | **${s.passes}/${s.totalRuns}** | ${s.avgTools} | ${s.avgDuration} | ${s.totalRetries} | **${s.agreementRate}** |\n`;
   }
   fs.writeFileSync(mdPath, mdContent);
+  const latestMdPath = path.join(RESULTS_DIR, 'latest.md');
+  fs.writeFileSync(latestMdPath, mdContent);
 
   console.log(`Saved evaluation artifacts:`);
   console.log(`- ${jsonPath}`);
-  console.log(`- ${mdPath}\n`);
+  console.log(`- ${mdPath}`);
+  console.log(`- ${latestMdPath}\n`);
 }
 
 main().catch((err) => {
