@@ -2,16 +2,38 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { StepCard } from './StepCard.jsx';
+import { ReportCard } from './ReportCard.jsx';
 import { EVENT_TYPES } from '@centralign/shared';
 import { EmptyState } from '@/components/ui/Modal.jsx';
 
 /**
  * Timeline component rendering the vertical sequence of agent steps with auto-scroll and jump-to-bottom.
+ * Integrates ReportCard directly inside the scroll stream so mouse-wheel scrolling effortlessly
+ * traverses through the summary, audit checks, and all underlying step cards.
  */
-export function Timeline({ events = [], isRunning = false, onOpenScreenshot }) {
+export function Timeline({
+  events = [],
+  isRunning = false,
+  onOpenScreenshot,
+  finalReport = null,
+  verification = null,
+  memory = null,
+  toolCallCount = 0,
+  elapsedSeconds = 0,
+}) {
   const containerRef = useRef(null);
   const bottomRef = useRef(null);
   const [userHasScrolledUp, setUserHasScrolledUp] = useState(false);
+  const [isReportCollapsed, setIsReportCollapsed] = useState(false);
+  const [isReportDismissed, setIsReportDismissed] = useState(false);
+
+  // Reset report state whenever a new report arrives
+  useEffect(() => {
+    if (finalReport) {
+      setIsReportDismissed(false);
+      setIsReportCollapsed(false);
+    }
+  }, [finalReport]);
 
   // Group low-level events into cohesive execution steps
   const steps = useMemo(() => {
@@ -84,12 +106,12 @@ export function Timeline({ events = [], isRunning = false, onOpenScreenshot }) {
     setUserHasScrolledUp(!isAtBottom);
   };
 
-  // Auto-scroll to bottom if user is not actively scrolling up
+  // Auto-scroll to bottom only while running if user hasn't scrolled up
   useEffect(() => {
-    if (!userHasScrolledUp && bottomRef.current) {
+    if (isRunning && !userHasScrolledUp && bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [steps.length, userHasScrolledUp]);
+  }, [steps.length, isRunning, userHasScrolledUp]);
 
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -100,9 +122,61 @@ export function Timeline({ events = [], isRunning = false, onOpenScreenshot }) {
     <div className="relative flex-1 flex flex-col min-h-0 bg-[#0A0A0A]">
       <div
         ref={containerRef}
+        data-testid="timeline-scroll"
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 flex flex-col gap-3"
       >
+        {/* Top Report Card integrated seamlessly into the scroll container */}
+        {finalReport && !isReportDismissed && (
+          <ReportCard
+            report={finalReport}
+            verification={verification}
+            memory={memory}
+            toolCallCount={toolCallCount}
+            elapsedSeconds={elapsedSeconds}
+            onOpenScreenshot={onOpenScreenshot}
+            isCollapsed={isReportCollapsed}
+            onToggleCollapse={() => setIsReportCollapsed((prev) => !prev)}
+            onClose={() => setIsReportDismissed(true)}
+          />
+        )}
+
+        {/* Minimized banner when Report Card has been dismissed by user */}
+        {finalReport && isReportDismissed && (
+          <div className="flex items-center justify-between px-3.5 py-2.5 rounded-[6px] bg-[#111111] border border-[#242424] shrink-0">
+            <div className="flex items-center gap-2.5 text-[12px]">
+              <span
+                className={`font-semibold ${
+                  finalReport.status === 'completed' ? 'text-[#3FB950]' : 'text-[#F85149]'
+                }`}
+              >
+                {finalReport.status === 'completed' ? '✓ Run Verified' : '✕ Run Failed'}
+              </span>
+              <span className="text-[#8C8C8C] font-mono">
+                {toolCallCount} calls • {elapsedSeconds}s
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsReportDismissed(false)}
+              className="text-[12px] font-medium text-[#FF6A1A] hover:underline cursor-pointer"
+            >
+              Show Report Details ↗
+            </button>
+          </div>
+        )}
+
+        {/* Section Heading when steps exist */}
+        {steps.length > 0 && (
+          <div className="flex items-center justify-between pt-1 pb-0 text-[11px] font-semibold uppercase tracking-wider text-[#5E5E5E]">
+            <span>Execution Timeline ({steps.length} Steps)</span>
+            <span className="text-[10px] font-normal normal-case text-[#8C8C8C]">
+              Scroll to view full step history
+            </span>
+          </div>
+        )}
+
+        {/* Step cards */}
         {steps.length === 0 ? (
           <EmptyState
             title={isRunning ? 'Starting agent run...' : 'No steps yet'}
@@ -122,7 +196,7 @@ export function Timeline({ events = [], isRunning = false, onOpenScreenshot }) {
           ))
         )}
 
-        <div ref={bottomRef} className="h-2 shrink-0" />
+        <div ref={bottomRef} className="h-4 shrink-0" />
       </div>
 
       {/* Floating Jump to Latest Chip */}

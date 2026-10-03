@@ -7,7 +7,6 @@ import { Composer, PRESET_TASKS } from './components/Composer.jsx';
 import { PipelineBar } from './components/PipelineBar.jsx';
 import { Timeline } from './components/Timeline.jsx';
 import { Inspector } from './components/Inspector.jsx';
-import { ReportCard } from './components/ReportCard.jsx';
 import { ApprovalModal } from './components/ApprovalModal.jsx';
 import { ClarifyModal } from './components/ClarifyModal.jsx';
 import { ScreenshotLightbox } from './components/ScreenshotLightbox.jsx';
@@ -119,25 +118,17 @@ export default function AgentConsolePage() {
             runStatus={runStatus}
           />
 
-          {/* Execution Timeline with optional Top Report Card */}
+          {/* Execution Timeline with integrated scrollable Report Card */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {finalReport && (
-              <div className="p-4 pb-0 shrink-0">
-                <ReportCard
-                  report={finalReport}
-                  verification={verification}
-                  memory={memory}
-                  toolCallCount={toolCallCount}
-                  elapsedSeconds={elapsedSeconds}
-                  onOpenScreenshot={setEnlargedScreenshot}
-                />
-              </div>
-            )}
-
             <Timeline
               events={events}
               isRunning={runStatus === 'running' || runStatus === 'awaiting_human'}
               onOpenScreenshot={setEnlargedScreenshot}
+              finalReport={finalReport}
+              verification={verification}
+              memory={memory}
+              toolCallCount={toolCallCount}
+              elapsedSeconds={elapsedSeconds}
             />
           </div>
         </main>

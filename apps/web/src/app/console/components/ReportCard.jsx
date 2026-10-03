@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button.jsx';
 
 /**
  * ReportCard rendered at the top of the timeline once the run finishes or fails.
+ * Fully scrollable, collapsible, and dismissible so the timeline is never blocked.
  */
 export function ReportCard({
   report,
@@ -14,6 +15,9 @@ export function ReportCard({
   toolCallCount = 0,
   elapsedSeconds = 0,
   onOpenScreenshot,
+  isCollapsed = false,
+  onToggleCollapse,
+  onClose,
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -86,16 +90,55 @@ export function ReportCard({
     URL.revokeObjectURL(url);
   };
 
+  // If in collapsed view, render a compact 36px high single-row bar
+  if (isCollapsed) {
+    return (
+      <div
+        className={`border rounded-[6px] px-3 py-2 bg-[#111111] transition-colors flex items-center justify-between gap-3 shrink-0 ${
+          isSuccess
+            ? 'border-[#3FB950]/40 border-l-4 border-l-[#3FB950]'
+            : 'border-[#F85149]/40 border-l-4 border-l-[#F85149]'
+        }`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Badge variant={isSuccess ? 'success' : 'danger'} size="sm">
+            {isSuccess ? '✓ Completed & Verified' : '✕ Execution Failed'}
+          </Badge>
+          <span className="text-[12px] font-mono text-[#8C8C8C] tabular-nums shrink-0">
+            {toolCallCount} calls • {elapsedSeconds}s
+          </span>
+          <span className="text-[12px] text-[#EDEDED] truncate hidden sm:inline">
+            {report.summary}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onToggleCollapse && (
+            <Button variant="ghost" size="sm" onClick={onToggleCollapse}>
+              ▼ Expand Details
+            </Button>
+          )}
+          {onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose} title="Close report">
+              ✕ Close
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Expanded View
   return (
     <div
-      className={`border rounded-[6px] p-4 bg-[#111111] mb-3 transition-colors ${
+      className={`border rounded-[6px] p-4 bg-[#111111] transition-colors shrink-0 ${
         isSuccess
           ? 'border-[#3FB950]/40 border-l-4 border-l-[#3FB950]'
           : 'border-[#F85149]/40 border-l-4 border-l-[#F85149]'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 mb-2">
+      <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <Badge variant={isSuccess ? 'success' : 'danger'} size="md">
             {isSuccess ? '✓ Completed & Verified' : '✕ Execution Failed'}
@@ -107,7 +150,7 @@ export function ReportCard({
 
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="sm" onClick={copySummary}>
-            {copied ? '✓ Copied' : 'Copy summary'}
+            {copied ? '✓ Copied' : 'Copy'}
           </Button>
           <Button variant="secondary" size="sm" onClick={downloadJson}>
             JSON
@@ -115,6 +158,22 @@ export function ReportCard({
           <Button variant="secondary" size="sm" onClick={downloadHtml}>
             HTML
           </Button>
+          {onToggleCollapse && (
+            <Button variant="ghost" size="sm" onClick={onToggleCollapse} title="Collapse report card">
+              ▲ Collapse
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="text-[#8C8C8C] hover:text-[#EDEDED]"
+              title="Close report to view timeline details"
+            >
+              ✕ Close
+            </Button>
+          )}
         </div>
       </div>
 
@@ -143,13 +202,15 @@ export function ReportCard({
         </div>
       )}
 
-      {/* Verification Audit Checklist */}
+      {/* Verification Audit Checklist with scroll limit */}
       {verification?.checks && verification.checks.length > 0 && (
         <div className="my-3">
-          <h4 className="text-[11px] uppercase tracking-wider text-[#8C8C8C] font-semibold mb-2">
-            Independent Verification Audit
-          </h4>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-[11px] uppercase tracking-wider text-[#8C8C8C] font-semibold">
+              Independent Verification Audit ({verification.checks.filter((c) => c.passed).length}/{verification.checks.length} Passed)
+            </h4>
+          </div>
+          <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto pr-1">
             {verification.checks.map((check, idx) => (
               <div
                 key={idx}
