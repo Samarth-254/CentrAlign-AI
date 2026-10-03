@@ -29,74 +29,84 @@ export default async function VendorInvoicesPage({ params, searchParams }) {
   const totalCount = totalCountRow ? totalCountRow.count : 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  // CRITICAL REQUIREMENT: Sorted by invoice_no, NOT by date, so "latest" requires reading dates
+  // CRITICAL REQUIREMENT: Sorted by invoice_no, NOT by date
   const invoices = db
     .prepare('SELECT * FROM invoices WHERE vendor_id = ? ORDER BY invoice_no ASC LIMIT ? OFFSET ?')
     .all(vendorId, pageSize, offset);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div className="min-h-screen bg-[#0A0A0A] text-[#EDEDED] flex flex-col font-sans select-none">
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-950/80 px-6 py-4 flex items-center justify-between sticky top-0 z-10 backdrop-blur">
-        <div className="flex items-center space-x-3">
+      <header className="h-12 border-b border-[#242424] bg-[#0A0A0A] px-6 flex items-center justify-between sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <Link href="/portal/vendors" className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 bg-[#FF6A1A] rounded-[3px]" />
+            <span className="text-[14px] font-semibold text-[#EDEDED] tracking-tight">
+              VendorHub
+            </span>
+          </Link>
+          <span className="text-[#333333]">/</span>
           <Link
             href="/portal/vendors"
-            className="text-xs text-slate-400 hover:text-white flex items-center space-x-1"
+            className="text-[12px] text-[#8C8C8C] hover:text-[#EDEDED]"
           >
-            <span>&larr; All Vendors</span>
+            ← All Vendors
           </Link>
-          <span className="text-slate-600">/</span>
-          <h1 className="font-semibold text-lg text-white">{vendor.name} Invoices</h1>
+          <span className="text-[#333333]">/</span>
+          <span className="text-[12px] text-[#EDEDED] font-medium">{vendor.name}</span>
         </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-xs px-2.5 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded-md">
+
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-mono text-[#8C8C8C] bg-[#161616] px-2 py-0.5 rounded-[4px] border border-[#242424]">
             ops@acme.test
           </span>
           <a
             href="/portal/api/logout"
-            className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
+            className="text-[12px] text-[#8C8C8C] hover:text-[#EDEDED] transition-colors"
           >
             Sign out
           </a>
         </div>
       </header>
 
-      {/* Main Table */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+      {/* Main Table Container */}
+      <main className="max-w-5xl mx-auto w-full px-6 py-8 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">{vendor.name}</h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Showing invoices (Sorted alphabetically by Invoice No). Page {page} of {totalPages}
+            <h2 className="text-[20px] font-semibold text-[#EDEDED] tracking-tight">
+              {vendor.name} Invoices
+            </h2>
+            <p className="text-[12px] font-mono text-[#8C8C8C] mt-1">
+              Table sorted alphabetically by Invoice No. Page {page} of {totalPages}
             </p>
           </div>
-          <div className="text-xs text-amber-400 bg-amber-950/40 border border-amber-800/60 px-3 py-2 rounded-lg">
-            Note: Table order is strictly by Invoice Number, not Issue Date.
+
+          <div className="text-[11px] font-mono text-[#D29922] bg-[#D29922]/10 border border-[#D29922]/20 px-3 py-1.5 rounded-[4px]">
+            Sorted by invoice number, not issue date.
           </div>
         </div>
 
-        <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl overflow-hidden shadow-lg">
-          <table className="min-w-full divide-y divide-slate-700/80 text-left text-sm" id="invoices-table">
-            <thead className="bg-slate-950/60 text-xs uppercase tracking-wider text-slate-400 font-semibold">
+        {/* Invoice Table */}
+        <div className="border border-[#242424] rounded-[6px] overflow-hidden bg-[#111111]">
+          <table className="w-full text-left border-collapse text-[13px]" id="invoices-table">
+            <thead className="bg-[#161616] text-[#8C8C8C] text-[11px] uppercase tracking-wider font-medium border-b border-[#242424] select-none sticky top-0">
               <tr>
-                <th scope="col" className="px-6 py-3.5">Invoice No</th>
-                <th scope="col" className="px-6 py-3.5">Issue Date</th>
-                <th scope="col" className="px-6 py-3.5">Due Date</th>
-                <th scope="col" className="px-6 py-3.5">Status</th>
-                <th scope="col" className="px-6 py-3.5 text-right">Amount</th>
-                <th scope="col" className="px-6 py-3.5 text-right">Document</th>
+                <th className="px-4 py-2.5">Invoice No</th>
+                <th className="px-4 py-2.5">Issue Date</th>
+                <th className="px-4 py-2.5">Due Date</th>
+                <th className="px-4 py-2.5">Status</th>
+                <th className="px-4 py-2.5 text-right">Amount</th>
+                <th className="px-4 py-2.5 text-right">Document</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/50 text-slate-200">
+            <tbody className="divide-y divide-[#242424] text-[#EDEDED]">
               {invoices.map((inv) => {
-                const statusColor =
-                  inv.status === 'Issued'
-                    ? 'bg-sky-950 text-sky-300 border-sky-800'
-                    : inv.status === 'Paid'
-                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                    : inv.status === 'Draft'
-                    ? 'bg-amber-950 text-amber-300 border-amber-800'
-                    : 'bg-slate-800 text-slate-400 border-slate-700';
+                const statusStyles = {
+                  Issued: 'bg-[#FF6A1A]/10 text-[#FF6A1A] border-[#FF6A1A]/20',
+                  Paid: 'bg-[#3FB950]/10 text-[#3FB950] border-[#3FB950]/20',
+                  Draft: 'bg-[#D29922]/10 text-[#D29922] border-[#D29922]/20',
+                  Void: 'bg-[#1C1C1C] text-[#5E5E5E] border-[#242424]',
+                };
 
                 const formattedAmount =
                   inv.currency === 'INR'
@@ -104,23 +114,33 @@ export default async function VendorInvoicesPage({ params, searchParams }) {
                     : `$${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
                 return (
-                  <tr key={inv.id} className="hover:bg-slate-750/40 transition-colors">
-                    <td className="px-6 py-4 font-mono font-medium text-white">{inv.invoice_no}</td>
-                    <td className="px-6 py-4 text-slate-300">{inv.issue_date}</td>
-                    <td className="px-6 py-4 text-slate-400">{inv.due_date}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusColor}`}>
+                  <tr key={inv.id} className="hover:bg-[#161616] transition-colors">
+                    <td className="px-4 py-2.5 font-mono font-medium text-[#EDEDED]">
+                      {inv.invoice_no}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[12px] text-[#8C8C8C]">
+                      {inv.issue_date}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-[12px] text-[#8C8C8C]">
+                      {inv.due_date}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded-[3px] text-[11px] font-mono border ${
+                          statusStyles[inv.status] || 'bg-[#161616] text-[#8C8C8C]'
+                        }`}
+                      >
                         {inv.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right font-mono font-semibold text-white">
+                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-[#EDEDED] tabular-nums">
                       {formattedAmount}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <a
                         href={`/invoices/${inv.pdf_filename}`}
                         download={inv.pdf_filename}
-                        className="inline-flex items-center px-3 py-1.5 border border-slate-600 rounded-md text-xs font-medium text-sky-400 bg-slate-900/60 hover:bg-slate-800 hover:text-sky-300 hover:border-sky-500 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[4px] text-[11px] font-mono font-medium text-[#EDEDED] bg-[#161616] border border-[#242424] hover:border-[#FF6A1A] hover:text-[#FF6A1A] transition-colors"
                         id={`download-${inv.invoice_no.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                       >
                         Download PDF ({inv.invoice_no})
@@ -133,44 +153,46 @@ export default async function VendorInvoicesPage({ params, searchParams }) {
           </table>
 
           {/* Pagination Controls */}
-          <div className="bg-slate-950/40 px-6 py-3.5 border-t border-slate-700/80 flex items-center justify-between">
-            <div className="text-xs text-slate-400">
-              Showing <span className="font-semibold text-slate-200">{offset + 1}</span> to{' '}
-              <span className="font-semibold text-slate-200">{Math.min(offset + pageSize, totalCount)}</span> of{' '}
-              <span className="font-semibold text-slate-200">{totalCount}</span> invoices
+          <div className="bg-[#161616] px-4 py-3 border-t border-[#242424] flex items-center justify-between">
+            <div className="text-[12px] font-mono text-[#8C8C8C]">
+              Showing {offset + 1}–{Math.min(offset + pageSize, totalCount)} of {totalCount} invoices
             </div>
-            <div className="flex space-x-2">
+            <div className="flex items-center gap-2">
               {page > 1 ? (
                 <Link
                   href={`/portal/vendors/${vendorId}/invoices?page=${page - 1}`}
-                  className="px-3 py-1.5 rounded border border-slate-700 text-xs font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+                  className="px-2.5 py-1 rounded-[4px] border border-[#242424] bg-[#111111] hover:bg-[#1C1C1C] text-[12px] text-[#EDEDED] transition-colors"
                   id="pagination-prev"
                 >
-                  &larr; Previous page
+                  ← Previous page
                 </Link>
               ) : (
-                <span className="px-3 py-1.5 rounded border border-slate-800 text-xs font-medium text-slate-600 cursor-not-allowed">
-                  &larr; Previous page
+                <span className="px-2.5 py-1 rounded-[4px] border border-[#1C1C1C] text-[12px] text-[#5E5E5E] cursor-not-allowed">
+                  ← Previous page
                 </span>
               )}
 
               {page < totalPages ? (
                 <Link
                   href={`/portal/vendors/${vendorId}/invoices?page=${page + 1}`}
-                  className="px-3 py-1.5 rounded border border-slate-700 text-xs font-medium text-slate-200 hover:bg-slate-800 transition-colors"
+                  className="px-2.5 py-1 rounded-[4px] border border-[#242424] bg-[#111111] hover:bg-[#1C1C1C] text-[12px] text-[#EDEDED] transition-colors"
                   id="pagination-next"
                 >
-                  Next page &rarr;
+                  Next page →
                 </Link>
               ) : (
-                <span className="px-3 py-1.5 rounded border border-slate-800 text-xs font-medium text-slate-600 cursor-not-allowed">
-                  Next page &rarr;
+                <span className="px-2.5 py-1 rounded-[4px] border border-[#1C1C1C] text-[12px] text-[#5E5E5E] cursor-not-allowed">
+                  Next page →
                 </span>
               )}
             </div>
           </div>
         </div>
       </main>
+
+      <footer className="border-t border-[#1C1C1C] py-4 text-center text-[11px] text-[#5E5E5E]">
+        VendorHub External Supplier Network • Simulated Environment
+      </footer>
     </div>
   );
 }

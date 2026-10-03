@@ -28,38 +28,44 @@ export default async function BillDetailPage({ params, searchParams }) {
       : `$${bill.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-[#0A0A0A] text-[#EDEDED] flex flex-col font-sans select-none">
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/90 px-6 py-4 flex items-center justify-between sticky top-0 z-10 backdrop-blur">
-        <div className="flex items-center space-x-3">
-          <Link href="/erp/bills" className="text-xs text-slate-400 hover:text-white flex items-center space-x-1">
-            <span>&larr; All Bills</span>
+      <header className="h-12 border-b border-[#242424] bg-[#0A0A0A] px-6 flex items-center justify-between sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <Link href="/erp/bills" className="flex items-center gap-2">
+            <div className="w-3.5 h-3.5 bg-[#FF6A1A] rounded-[3px]" />
+            <span className="text-[14px] font-semibold text-[#EDEDED] tracking-tight">
+              AcmeBooks
+            </span>
           </Link>
-          <span className="text-slate-600">/</span>
-          <h1 className="font-semibold text-lg text-white">Bill: {bill.invoice_no}</h1>
+          <span className="text-[#333333]">/</span>
+          <Link href="/erp/bills" className="text-[12px] text-[#8C8C8C] hover:text-[#EDEDED]">
+            ← All Bills
+          </Link>
+          <span className="text-[#333333]">/</span>
+          <span className="text-[12px] text-[#EDEDED] font-medium font-mono">{bill.invoice_no}</span>
         </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-xs px-2.5 py-1 bg-slate-800 border border-slate-700 text-slate-300 rounded-md">
+
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-mono text-[#8C8C8C] bg-[#161616] px-2 py-0.5 rounded-[4px] border border-[#242424]">
             finance@acme.test
           </span>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <main className="max-w-3xl mx-auto w-full px-6 py-8 flex-1">
         {/* Success Banner when Bill Created */}
         {isJustCreated && (
           <div
             role="status"
             id="bill-created-banner"
-            className="mb-6 p-4 rounded-xl bg-emerald-950/80 border border-emerald-700 text-emerald-100 shadow-lg flex items-center space-x-3"
+            className="mb-6 p-3.5 rounded-[6px] bg-[#3FB950]/10 border border-[#3FB950]/30 text-[#3FB950] text-[12px] flex items-center gap-2.5"
           >
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              ✓
-            </div>
+            <span className="font-bold text-[14px] leading-none">✓</span>
             <div>
-              <h3 className="font-semibold text-emerald-200">Bill created</h3>
-              <p className="text-xs text-emerald-300/90 mt-0.5">
+              <h3 className="font-semibold text-[#EDEDED]">Bill created</h3>
+              <p className="text-[11px] text-[#8C8C8C] mt-0.5">
                 The payable bill record was successfully saved and registered in AcmeBooks ledger.
               </p>
             </div>
@@ -71,14 +77,12 @@ export default async function BillDetailPage({ params, searchParams }) {
           <div
             role="status"
             id="bill-paid-banner"
-            className="mb-6 p-4 rounded-xl bg-sky-950/80 border border-sky-700 text-sky-100 shadow-lg flex items-center space-x-3"
+            className="mb-6 p-3.5 rounded-[6px] bg-[#3FB950]/10 border border-[#3FB950]/30 text-[#3FB950] text-[12px] flex items-center gap-2.5"
           >
-            <div className="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold">
-              ✓
-            </div>
+            <span className="font-bold text-[14px] leading-none">✓</span>
             <div>
-              <h3 className="font-semibold text-sky-200">Payment Status Updated</h3>
-              <p className="text-xs text-sky-300/90 mt-0.5">
+              <h3 className="font-semibold text-[#EDEDED]">Payment Status Updated</h3>
+              <p className="text-[11px] text-[#8C8C8C] mt-0.5">
                 The bill has been marked as Paid in AcmeBooks.
               </p>
             </div>
@@ -86,21 +90,23 @@ export default async function BillDetailPage({ params, searchParams }) {
         )}
 
         {/* Bill Record Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-          <div className="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="bg-[#111111] border border-[#242424] rounded-[6px] overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#242424] flex items-center justify-between">
             <div>
-              <span className="text-xs font-mono text-slate-500 uppercase tracking-wider">
-                Internal Record ID: {bill.id}
+              <span className="text-[11px] font-mono text-[#5E5E5E]">
+                ID: {bill.id}
               </span>
-              <h2 className="text-xl font-bold text-white mt-1">{bill.vendor_name}</h2>
+              <h2 className="text-[18px] font-semibold text-[#EDEDED] mt-0.5">
+                {bill.vendor_name}
+              </h2>
             </div>
             <div>
               <span
                 id="bill-status-badge"
-                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
+                className={`inline-block px-2 py-0.5 rounded-[4px] text-[11px] font-mono border ${
                   bill.status === 'Paid'
-                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800'
-                    : 'bg-amber-950 text-amber-300 border-amber-800'
+                    ? 'bg-[#3FB950]/10 text-[#3FB950] border-[#3FB950]/20'
+                    : 'bg-[#D29922]/10 text-[#D29922] border-[#D29922]/20'
                 }`}
               >
                 {bill.status}
@@ -108,55 +114,60 @@ export default async function BillDetailPage({ params, searchParams }) {
             </div>
           </div>
 
-          <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px]">
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Invoice Number</span>
-              <p className="font-mono text-base font-semibold text-white mt-1" id="detail-invoice-no">
+              <span className="text-[11px] text-[#8C8C8C] uppercase tracking-wider block">
+                Invoice Number
+              </span>
+              <p className="font-mono text-[14px] font-semibold text-[#EDEDED] mt-0.5" id="detail-invoice-no">
                 {bill.invoice_no}
               </p>
             </div>
 
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Amount</span>
-              <p className="font-mono text-xl font-bold text-emerald-400 mt-1" id="detail-amount">
+              <span className="text-[11px] text-[#8C8C8C] uppercase tracking-wider block">
+                Total Amount
+              </span>
+              <p className="font-mono text-[16px] font-bold text-[#EDEDED] mt-0.5 tabular-nums" id="detail-amount">
                 {formattedAmount}
               </p>
             </div>
 
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Invoice Date</span>
-              <p className="text-slate-200 mt-1" id="detail-invoice-date">
+              <span className="text-[11px] text-[#8C8C8C] uppercase tracking-wider block">
+                Invoice Date
+              </span>
+              <p className="font-mono text-[13px] text-[#EDEDED] mt-0.5" id="detail-invoice-date">
                 {bill.invoice_date}
               </p>
             </div>
 
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Due Date</span>
-              <p className="text-slate-200 mt-1" id="detail-due-date">
+              <span className="text-[11px] text-[#8C8C8C] uppercase tracking-wider block">
+                Due Date
+              </span>
+              <p className="font-mono text-[13px] text-[#EDEDED] mt-0.5" id="detail-due-date">
                 {bill.due_date}
               </p>
             </div>
 
-            <div className="md:col-span-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Notes & Remittance</span>
-              <p className="text-slate-300 mt-1 bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs font-mono">
+            <div className="sm:col-span-2">
+              <span className="text-[11px] text-[#8C8C8C] uppercase tracking-wider block">
+                Notes & Remittance Info
+              </span>
+              <p className="text-[#8C8C8C] mt-1 bg-[#161616] p-3 rounded-[4px] border border-[#242424] text-[12px] font-mono">
                 {bill.notes || 'No notes entered.'}
               </p>
-            </div>
-
-            <div>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Created At</span>
-              <p className="text-xs text-slate-500 mt-1">{bill.created_at}</p>
             </div>
           </div>
 
           {/* Action Footer */}
-          <div className="px-6 py-4 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between">
+          <div className="px-6 py-3.5 bg-[#161616] border-t border-[#242424] flex items-center justify-between">
             <Link
               href="/erp/bills"
-              className="text-xs text-slate-400 hover:text-white underline"
+              className="text-[12px] text-[#8C8C8C] hover:text-[#EDEDED]"
             >
-              &larr; Back to bills list
+              ← Back to bills list
             </Link>
 
             {bill.status !== 'Paid' && (
@@ -164,7 +175,7 @@ export default async function BillDetailPage({ params, searchParams }) {
                 <button
                   type="submit"
                   id="mark-as-paid-button"
-                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+                  className="px-3.5 py-1.5 rounded-[6px] text-[12px] font-semibold text-[#0A0A0A] bg-[#FF6A1A] hover:bg-[#FF7F3A] active:bg-[#E55A0F] focus-visible:outline-2 focus-visible:outline-[#FF6A1A] transition-colors cursor-pointer"
                 >
                   Mark as Paid
                 </button>
@@ -173,6 +184,10 @@ export default async function BillDetailPage({ params, searchParams }) {
           </div>
         </div>
       </main>
+
+      <footer className="border-t border-[#1C1C1C] py-4 text-center text-[11px] text-[#5E5E5E]">
+        AcmeBooks Financial Ledger • Internal System of Record
+      </footer>
     </div>
   );
 }

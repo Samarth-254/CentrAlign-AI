@@ -2,99 +2,127 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
-      <header className="border-b border-slate-800/80 px-8 py-6 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
-            CA
-          </div>
-          <div>
-            <h1 className="font-bold text-xl tracking-tight text-white">CentrAlign AI</h1>
-            <p className="text-xs text-slate-400">Autonomous Task Worker Architecture</p>
-          </div>
+    <div className="min-h-screen bg-[#0A0A0A] text-[#EDEDED] flex flex-col justify-between font-sans selection:bg-[#FF6A1A]/20 select-none">
+      {/* Top Header */}
+      <header className="h-12 border-b border-[#242424] px-6 flex items-center justify-between sticky top-0 z-20 bg-[#0A0A0A]">
+        <div className="flex items-center gap-3">
+          <div className="w-3.5 h-3.5 bg-[#FF6A1A] rounded-[3px]" />
+          <span className="text-[14px] font-semibold text-[#EDEDED] tracking-tight">
+            CentrAlign AI
+          </span>
+          <div className="h-4 w-px bg-[#242424]" />
+          <span className="text-[12px] text-[#8C8C8C]">Autonomous Task Worker</span>
         </div>
-        <div className="flex items-center space-x-4">
+        <div>
           <Link
             href="/console"
-            className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-semibold shadow-md transition-all"
+            className="px-3 py-1.5 bg-[#FF6A1A] hover:bg-[#FF7F3A] active:bg-[#E55A0F] text-[#0A0A0A] rounded-[6px] text-[12px] font-semibold transition-colors"
           >
-            Launch Console &rarr;
+            Launch Console →
           </Link>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-16 flex-1 flex flex-col justify-center">
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <span className="inline-block px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sky-400 bg-sky-950/60 rounded-full border border-sky-800/50 mb-4">
-            AI Engineering Prototype
-          </span>
-          <h2 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            Autonomous Task Worker Sandbox & System
-          </h2>
-          <p className="mt-4 text-base text-slate-400">
-            A state machine agent built on LangGraph.js that interacts with real browser UIs, extracts structured data from commercial PDFs, enforces deterministic policy gates, and independently verifies outcomes.
+      {/* Main Container */}
+      <main className="max-w-4xl mx-auto px-6 py-16 flex-1 flex flex-col justify-center">
+        <div className="mb-12">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[4px] bg-[#161616] border border-[#242424] text-[11px] font-mono text-[#8C8C8C] mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF6A1A]" />
+            <span>Autonomous AI Task Worker Prototype</span>
+          </div>
+          <h1 className="text-[32px] sm:text-[38px] font-semibold text-[#EDEDED] tracking-tight leading-tight">
+            Enterprise computer-use agent with deterministic safety & independent verification.
+          </h1>
+          <p className="mt-3 text-[14px] text-[#8C8C8C] max-w-2xl leading-relaxed">
+            A state machine agent built on LangGraph.js that operates realistic web applications through Playwright accessibility trees, extracts structured fields from commercial invoices, and enforces human-in-the-loop policy gates.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Agent Console */}
-          <div className="bg-slate-900/80 border border-slate-800 hover:border-sky-500/50 rounded-2xl p-6 transition-all shadow-lg flex flex-col justify-between">
+        {/* 3 Main Apps Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Console */}
+          <div className="bg-[#111111] border border-[#242424] hover:border-[#333333] rounded-[6px] p-5 flex flex-col justify-between transition-colors">
             <div>
-              <div className="w-10 h-10 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400 mb-4 font-bold">
-                UI
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-mono text-[#FF6A1A] bg-[#FF6A1A]/10 px-2 py-0.5 rounded-[3px] border border-[#FF6A1A]/20">
+                  Worker Console
+                </span>
+                <span className="text-[11px] font-mono text-[#5E5E5E]">/console</span>
               </div>
-              <h3 className="text-lg font-semibold text-white">Agent Console</h3>
-              <p className="text-xs text-slate-400 mt-2">
+              <h2 className="text-[15px] font-semibold text-[#EDEDED]">
+                Agent Console
+              </h2>
+              <p className="text-[12px] text-[#8C8C8C] mt-1.5 leading-relaxed">
                 Live SSE execution timeline, living plan checklists, memory inspection, human approval modals, and verification report audits.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-800">
-              <Link href="/console" className="text-sm font-medium text-sky-400 hover:text-sky-300">
-                Open Console &rarr;
+            <div className="mt-6 pt-3 border-t border-[#1C1C1C]">
+              <Link
+                href="/console"
+                className="text-[12px] font-medium text-[#FF6A1A] hover:text-[#FF7F3A] transition-colors"
+              >
+                Open Console →
               </Link>
             </div>
           </div>
 
-          {/* Card 2: Vendor Portal */}
-          <div className="bg-slate-900/80 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 transition-all shadow-lg flex flex-col justify-between">
+          {/* Vendor Portal */}
+          <div className="bg-[#111111] border border-[#242424] hover:border-[#333333] rounded-[6px] p-5 flex flex-col justify-between transition-colors">
             <div>
-              <div className="w-10 h-10 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4 font-bold">
-                VP
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-mono text-[#8C8C8C] bg-[#161616] px-2 py-0.5 rounded-[3px] border border-[#242424]">
+                  External System
+                </span>
+                <span className="text-[11px] font-mono text-[#5E5E5E]">/portal</span>
               </div>
-              <h3 className="text-lg font-semibold text-white">Vendor Portal</h3>
-              <p className="text-xs text-slate-400 mt-2">
+              <h2 className="text-[15px] font-semibold text-[#EDEDED]">
+                VendorHub Portal
+              </h2>
+              <p className="text-[12px] text-[#8C8C8C] mt-1.5 leading-relaxed">
                 Simulated 3rd-party supplier portal with 5 companies, paginated invoice tables, and downloadable multi-format PDFs.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-800">
-              <Link href="/portal/vendors" className="text-sm font-medium text-indigo-400 hover:text-indigo-300">
-                Explore Portal &rarr;
+            <div className="mt-6 pt-3 border-t border-[#1C1C1C]">
+              <Link
+                href="/portal/vendors"
+                className="text-[12px] font-medium text-[#EDEDED] hover:text-white transition-colors"
+              >
+                Explore Portal →
               </Link>
             </div>
           </div>
 
-          {/* Card 3: AcmeBooks ERP */}
-          <div className="bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-6 transition-all shadow-lg flex flex-col justify-between">
+          {/* AcmeBooks ERP */}
+          <div className="bg-[#111111] border border-[#242424] hover:border-[#333333] rounded-[6px] p-5 flex flex-col justify-between transition-colors">
             <div>
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 font-bold">
-                AB
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-mono text-[#8C8C8C] bg-[#161616] px-2 py-0.5 rounded-[3px] border border-[#242424]">
+                  System of Record
+                </span>
+                <span className="text-[11px] font-mono text-[#5E5E5E]">/erp</span>
               </div>
-              <h3 className="text-lg font-semibold text-white">AcmeBooks ERP</h3>
-              <p className="text-xs text-slate-400 mt-2">
+              <h2 className="text-[15px] font-semibold text-[#EDEDED]">
+                AcmeBooks ERP
+              </h2>
+              <p className="text-[12px] text-[#8C8C8C] mt-1.5 leading-relaxed">
                 Internal enterprise accounting system with strict server validations, duplicate detection, chaos mode, and payment actions.
               </p>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-800">
-              <Link href="/erp/bills" className="text-sm font-medium text-emerald-400 hover:text-emerald-300">
-                Enter AcmeBooks &rarr;
+            <div className="mt-6 pt-3 border-t border-[#1C1C1C]">
+              <Link
+                href="/erp/bills"
+                className="text-[12px] font-medium text-[#EDEDED] hover:text-white transition-colors"
+              >
+                Enter AcmeBooks →
               </Link>
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="border-t border-slate-900 px-8 py-6 text-center text-xs text-slate-500">
-        CentrAlign Task Worker Prototype &bull; JavaScript ESM &bull; LangGraph.js &bull; Playwright &bull; Google Gemini
+      {/* Footer */}
+      <footer className="border-t border-[#1C1C1C] px-6 py-4 text-center text-[11px] text-[#5E5E5E]">
+        CentrAlign Task Worker Prototype • Plain JavaScript ESM • LangGraph.js • Playwright • Google Gemini
       </footer>
     </div>
   );

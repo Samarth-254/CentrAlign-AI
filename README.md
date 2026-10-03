@@ -10,6 +10,18 @@
 
 ---
 
+## 📸 Interface Preview (Production Black & Orange System)
+
+| Autonomous Agent Console & Verification Audit | Human-in-the-Loop Approval Modal |
+|:---:|:---:|
+| ![Agent Console Completed Report](docs/screenshots/console-completed-report-1440x900.png) | ![Human Approval Modal](docs/screenshots/console-approval-modal-1440x900.png) |
+
+| AcmeBooks ERP Financial Ledger | VendorHub Supplier Portal |
+|:---:|:---:|
+| ![AcmeBooks ERP Ledger](docs/screenshots/erp-bills-1440x900.png) | ![VendorHub Invoices](docs/screenshots/portal-invoices-1440x900.png) |
+
+---
+
 ## 🎬 Demo Video
 - **Video Walkthrough Placeholder:** [Watch the 3-Minute Walkthrough Video](https://youtu.be/centralign-ai-worker-demo)
 - **Narration Script:** Complete script with visual cues available in [`docs/demo-script.md`](file:///d:/CenterAlign/docs/demo-script.md).
