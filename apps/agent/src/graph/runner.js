@@ -205,6 +205,15 @@ export async function abortAgentRun(runId) {
 }
 
 /**
+ * Get active run's trace logger
+ * @param {string} runId
+ * @returns {import('../trace/logger.js').TraceLogger|null}
+ */
+export function getActiveRunLogger(runId) {
+  return activeRuns.get(runId)?.logger || null;
+}
+
+/**
  * Get active run context or inspect saved run
  * @param {string} runId
  * @returns {Object|null}
