@@ -115,8 +115,12 @@ app.get('/runs/:id/events', (req, res) => {
   }
 
   // Listen for live new events if traceLogger is active in memory
-  const unsubscribe = (event) => {
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  const sendEvent = (event) => {
+    try {
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    } catch {
+      // client connection closed
+    }
     if (
       event.type === EVENT_TYPES.RUN_COMPLETED ||
       event.type === EVENT_TYPES.RUN_FAILED ||
@@ -134,14 +138,17 @@ app.get('/runs/:id/events', (req, res) => {
   };
 
   // Find active run logger
+  let unsubFn = null;
   const activeLogger = getRunLogger(id);
   if (activeLogger) {
-    activeLogger.subscribe(unsubscribe);
+    unsubFn = activeLogger.subscribe(sendEvent);
   }
 
   req.on('close', () => {
-    if (activeLogger) {
-      activeLogger.unsubscribe(unsubscribe);
+    if (typeof unsubFn === 'function') {
+      unsubFn();
+    } else if (activeLogger?.unsubscribe) {
+      activeLogger.unsubscribe(sendEvent);
     }
   });
 });

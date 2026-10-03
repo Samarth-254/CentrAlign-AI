@@ -49,6 +49,14 @@ export class TraceLogger {
   }
 
   /**
+   * Unsubscribe a listener from live run events
+   * @param {(event: Object) => void} listener
+   */
+  unsubscribe(listener) {
+    this.listeners.delete(listener);
+  }
+
+  /**
    * Emit a structured event conforming to packages/shared EVENT_TYPES
    * @param {string} type - Event type constant
    * @param {Record<string, *>} data - Event payload
