@@ -280,16 +280,16 @@ export function buildHeuristicNextAction(state) {
     const amountRef = findRefByRoleAndName(obs, 'spinbutton', 'Total Amount') || findRefByRoleAndName(obs, 'textbox', 'Total Amount');
     const submitBtnRef = findRefByRoleAndName(obs, 'button', 'Submit Bill');
 
-    // Fill vendor
-    if (vendorSelectRef && !obs.includes('selected="Northwind Traders"') && !obs.includes('selected="Globex Logistics"')) {
-      let vName = 'Northwind Traders';
-      const rawVendor = String(memory.vendorName || '');
-      if (rawVendor.includes('Northwind')) vName = 'Northwind Traders';
-      else if (rawVendor.includes('Globex')) vName = 'Globex Logistics';
-      else if (rawVendor.includes('Initech')) vName = 'Initech Software';
-      else if (rawVendor.includes('Umbrella')) vName = 'Umbrella Supplies';
-      else if (rawVendor.includes('Stark')) vName = 'Stark Components';
+    let vName = 'Northwind Traders';
+    const rawVendor = String(memory.vendorName || '');
+    if (rawVendor.includes('Northwind')) vName = 'Northwind Traders';
+    else if (rawVendor.includes('Globex')) vName = 'Globex Logistics';
+    else if (rawVendor.includes('Initech')) vName = 'Initech Software';
+    else if (rawVendor.includes('Umbrella')) vName = 'Umbrella Supplies';
+    else if (rawVendor.includes('Stark')) vName = 'Stark Components';
 
+    // Fill vendor dropdown if not yet selected
+    if (vendorSelectRef && (obs.includes('selected="-- Select Vendor --"') || !obs.includes(`selected="${vName}"`))) {
       return {
         name: 'browser_select',
         args: { ref: vendorSelectRef, value: vName },
