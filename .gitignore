@@ -1,15 +1,76 @@
+# Dependencies and package managers
 node_modules/
+.pnpm-store/
+.npm/
+
+# Build outputs
 .next/
 out/
-build/
 dist/
-*.log
-.DS_Store
-*.local
+build/
+coverage/
+*.tsbuildinfo
+
+# Secrets and environment files
 .env
-.env*.local
-apps/agent/runs/
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
 apps/web/data/*.db*
 !apps/web/data/.gitkeep
-test-results/
+
+# Generated files that seed script recreates
+apps/web/public/invoices/*.pdf
+
+# Agent run artifacts and traces
+apps/agent/runs/
+**/runs/*
+!**/runs/.gitkeep
+traces/
+*.jsonl
+workspace/
+downloads/
+temp/
+tmp/
+screenshots/
+*.png.tmp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.system_generated/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Playwright & Testing
 playwright-report/
+test-results/
+.playwright/
+
+# Evaluation outputs (keep only latest.md summary)
+evals/results/*
+!evals/results/latest.md
+
+# Scratch, temp, and agent artifacts
+scratch/
+.tempmediaStorage/
+.user_uploaded/
+scripts/

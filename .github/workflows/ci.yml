@@ -31,6 +31,9 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Run Linter
+        run: pnpm lint
+
       - name: Run Unit Tests
         run: pnpm test
 
