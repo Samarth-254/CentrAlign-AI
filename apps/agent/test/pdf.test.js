@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,14 @@ const __dirname = path.dirname(__filename);
 const invoicesDir = path.resolve(__dirname, '../../web/public/invoices');
 
 describe('PDF Extraction on Seeded Invoices', () => {
+  beforeAll(async () => {
+    const samplePdf = path.join(invoicesDir, 'INV-1042.pdf');
+    if (!fs.existsSync(samplePdf)) {
+      const { seedDatabase } = await import('../../web/src/lib/seed.js');
+      await seedDatabase();
+    }
+  });
+
   it('extracts correct text and fields for Northwind INV-1042', async () => {
     const pdfPath = path.join(invoicesDir, 'INV-1042.pdf');
     const buffer = fs.readFileSync(pdfPath);

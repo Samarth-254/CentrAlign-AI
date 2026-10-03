@@ -34,11 +34,11 @@ jobs:
       - name: Run Linter
         run: pnpm lint
 
-      - name: Run Unit Tests
-        run: pnpm test
-
       - name: Seed Database
         run: pnpm --filter @centralign/web seed
+
+      - name: Run Unit Tests
+        run: pnpm test
 
       - name: Build Web Application
         run: pnpm --filter @centralign/web build
