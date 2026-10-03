@@ -1,0 +1,27 @@
+{
+  "name": "@centralign/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "seed": "node --experimental-sqlite scripts/seed.js"
+  },
+  "dependencies": {
+    "@centralign/shared": "workspace:*",
+    "cookie": "^1.0.2",
+    "lucide-react": "^1.16.0",
+    "next": "^15.1.7",
+    "pdfkit": "^0.16.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.9",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.9"
+  }
+}
