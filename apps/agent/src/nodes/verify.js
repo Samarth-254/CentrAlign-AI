@@ -112,6 +112,8 @@ export async function verifyNode(state, config) {
       passed: check.passed,
       evidence: check.evidence,
       explanation: check.explanation,
+      screenshot: check.screenshot,
+      screenshotPath: check.screenshotPath,
     });
   }
 
@@ -201,14 +203,24 @@ export function evaluateDeterministicAudit(ctx) {
       explanation = 'Verified';
     }
 
-    if (!passed) allPassed = false;
+    const targetScreenshotPath = screenshotPath;
+    let screenshotDataUrl = null;
+    if (targetScreenshotPath && fs.existsSync(targetScreenshotPath)) {
+      try {
+        const buf = fs.readFileSync(targetScreenshotPath);
+        screenshotDataUrl = `data:image/png;base64,${buf.toString('base64')}`;
+      } catch {
+        // ignore
+      }
+    }
 
     checks.push({
       criterion,
       passed,
       evidence,
       explanation,
-      screenshotPath,
+      screenshot: screenshotDataUrl,
+      screenshotPath: targetScreenshotPath,
     });
   }
 

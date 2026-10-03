@@ -77,6 +77,17 @@ export async function finalizeNode(state, config) {
     fs.writeFileSync(path.join(runDir, 'report.html'), html, 'utf8');
   }
 
+  const finalizedSteps = (plan?.steps || []).map((s) => ({
+    ...s,
+    status: isSuccess ? 'done' : s.status === 'in_progress' ? 'failed' : s.status,
+  }));
+  if (finalizedSteps.length > 0) {
+    logger?.emit(EVENT_TYPES.PLAN_UPDATED, {
+      steps: finalizedSteps,
+      reason: isSuccess ? 'All planned milestones completed and verified' : 'Execution finalized',
+    });
+  }
+
   const completionEvent = isSuccess ? EVENT_TYPES.RUN_COMPLETED : EVENT_TYPES.RUN_FAILED;
   logger?.emit(completionEvent, {
     status: finalStatus,
@@ -89,6 +100,7 @@ export async function finalizeNode(state, config) {
 
   return {
     finalReport: validatedReport,
+    plan: plan ? { ...plan, steps: finalizedSteps } : plan,
     status: finalStatus,
   };
 }

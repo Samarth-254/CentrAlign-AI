@@ -49,6 +49,7 @@ export function useRunStream(onStreamEnded) {
         break;
 
       case EVENT_TYPES.PLAN_CREATED:
+      case EVENT_TYPES.PLAN_UPDATED:
         setPlan(data.steps || []);
         break;
 
@@ -111,6 +112,12 @@ export function useRunStream(onStreamEnded) {
       case EVENT_TYPES.RUN_COMPLETED:
         setRunStatus('completed');
         setActiveNode('complete');
+        setPlan((prev) =>
+          prev.map((step) => ({
+            ...step,
+            status: step.status === 'failed' ? 'failed' : 'done',
+          }))
+        );
         setFinalReport(data.report || { status: 'completed', summary: data.summary });
         setPendingApproval(null);
         setPendingQuestion(null);
@@ -257,7 +264,9 @@ export function useRunStream(onStreamEnded) {
 
     for (const evt of data.events || []) {
       if (evt.type === EVENT_TYPES.UNDERSTANDING_PRODUCED) loadedUnderstanding = evt.data;
-      if (evt.type === EVENT_TYPES.PLAN_CREATED) loadedPlan = evt.data.steps || [];
+      if (evt.type === EVENT_TYPES.PLAN_CREATED || evt.type === EVENT_TYPES.PLAN_UPDATED) {
+        loadedPlan = evt.data.steps || [];
+      }
       if (evt.type === EVENT_TYPES.MEMORY_UPDATED) {
         loadedMemory[evt.data.key] = { value: evt.data.value, provenance: evt.data.provenance };
       }
@@ -270,6 +279,14 @@ export function useRunStream(onStreamEnded) {
             .map((e) => e.data),
         };
       }
+    }
+
+    // If past run was completed successfully, ensure steps reflect done status
+    if (data.status === 'completed' && loadedPlan.length > 0) {
+      loadedPlan = loadedPlan.map((s) => ({
+        ...s,
+        status: s.status === 'failed' ? 'failed' : 'done',
+      }));
     }
 
     setUnderstanding(loadedUnderstanding);
@@ -303,7 +320,12 @@ export function useRunStream(onStreamEnded) {
     .reverse()
     .find((e) => e.type === EVENT_TYPES.OBSERVATION_CAPTURED);
   const currentUrl = latestObservation?.data?.url || 'about:blank';
-  const currentScreenshot = latestObservation?.data?.screenshot || null;
+  const currentScreenshot =
+    latestObservation?.data?.screenshot ||
+    latestObservation?.data?.screenshotUrl ||
+    (latestObservation?.data?.screenshotPath && activeRunId
+      ? `${AGENT_SERVER_URL}/runs/${activeRunId}/screenshots/${latestObservation.data.screenshotPath.split(/[/\\]/).pop()}`
+      : null);
 
   return {
     activeRunId,

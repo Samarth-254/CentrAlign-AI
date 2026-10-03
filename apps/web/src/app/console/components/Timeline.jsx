@@ -76,7 +76,12 @@ export function Timeline({
       } else if (type === EVENT_TYPES.OBSERVATION_CAPTURED) {
         if (currentStep) {
           currentStep.url = data.url;
-          currentStep.screenshot = data.screenshot;
+          currentStep.screenshot =
+            data.screenshot ||
+            data.screenshotUrl ||
+            (data.screenshotPath && evt.runId
+              ? `http://localhost:4000/runs/${evt.runId}/screenshots/${data.screenshotPath.split(/[/\\]/).pop()}`
+              : null);
         }
       } else if (type === EVENT_TYPES.REFLECTION_COMPLETED) {
         if (currentStep) {
