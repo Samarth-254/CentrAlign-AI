@@ -162,7 +162,13 @@ export function evaluateDeterministicAudit(ctx) {
     let evidence = '';
     let explanation = '';
 
-    if (cLower.includes('locate') && cLower.includes('invoice')) {
+    if (cLower.includes('locate') && cLower.includes('bill')) {
+      const match = criterion.match(/\b([A-Z]{2,4}-[0-9]{3,4})\b/i);
+      const inv = match ? match[1] : (memory.invoiceNumber || 'GLX-890');
+      passed = billsTableText.includes(inv) || billDetailText.includes(inv);
+      evidence = passed ? `Bill for ${inv} located in AcmeBooks ledger` : `Bill for ${inv} not found in AcmeBooks`;
+      explanation = passed ? 'Target bill verified in company ledger' : 'Bill not found in ledger';
+    } else if (cLower.includes('locate') && cLower.includes('invoice')) {
       passed = !!(sourcePdfData?.invoiceNumber?.value || memory.invoiceNumber);
       evidence = `Invoice number identified: ${memory.invoiceNumber || sourcePdfData?.invoiceNumber?.value}`;
       explanation = passed ? 'Source invoice successfully located' : 'Could not locate source invoice';

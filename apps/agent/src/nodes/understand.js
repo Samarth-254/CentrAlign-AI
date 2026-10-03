@@ -63,7 +63,7 @@ export function buildHeuristicUnderstanding(goal) {
 
   // T2: Mark bill as paid
   if (gLower.includes('mark') && (gLower.includes('paid') || gLower.includes('bill'))) {
-    const invoiceMatch = goal.match(/(?:invoice|bill)?\s*([A-Z0-9\-_]+)/i);
+    const invoiceMatch = goal.match(/\b([A-Z]{2,4}-[0-9]{3,4})\b/i) || goal.match(/(?:invoice|bill)\s+([A-Z0-9\-_]+)/i);
     const invoiceNo = invoiceMatch ? invoiceMatch[1] : 'GLX-890';
     return {
       objective: `Mark the entered bill for Globex Logistics invoice ${invoiceNo} as paid in AcmeBooks`,
