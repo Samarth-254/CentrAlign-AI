@@ -143,7 +143,7 @@ sequenceDiagram
     participant Console as Web Console (Next.js)
     participant Server as Agent Server (Express)
     participant Graph as LangGraph Engine
-    participant LLM as Google Gemini (2.5 Flash Lite)
+    participant LLM as Google Gemini (3.5 Flash Lite)
     participant Browser as Playwright Chromium
     participant ERP as AcmeBooks ERP
     participant Verifier as Independent Auditor
@@ -299,7 +299,7 @@ Available CLI Flags:
 | Name | Required | Default | Description |
 | :--- | :---: | :--- | :--- |
 | `GEMINI_API_KEY` | Yes | None | Google Gemini API key from Google AI Studio. |
-| `GEMINI_MODEL` | No | `gemini-2.5-flash-lite` | Model ID for planning, decisions, and verification. |
+| `GEMINI_MODEL` | No | `gemini-3.5-flash-lite` | Model ID for planning, decisions, and verification. |
 | `PORT_WEB` | No | `3000` | Port for Next.js web application and sandbox apps. |
 | `PORT_AGENT` | No | `4000` | Port for Express agent server and SSE streams. |
 | `WEB_BASE_URL` | No | `http://localhost:3000` | Base URL of the web application. |
@@ -402,7 +402,7 @@ Notes on Flakiness:
 | :--- | :--- | :--- |
 | **Node.js (v20+)** | Runtime | Modern JavaScript runtime supporting native ES modules and `node:sqlite`. |
 | **LangGraph.js** | Agent Framework | State graph orchestrator providing explicit transitions, checkpointing, and `interrupt()`. |
-| **Google Gemini 2.5 Flash Lite** | Foundation Model | Fast, cost-effective LLM with native function calling and structured JSON output. |
+| **Google Gemini 3.5 Flash Lite** | Foundation Model | Fast, cost-effective LLM with native function calling and structured JSON output. |
 | **Playwright** | Automation | Headless Chromium browser automation with accessibility snapshot extraction. |
 | **Next.js 15 + React 19** | Frontend and Sandbox | Full-stack web framework hosting the Operator Console, VendorHub Portal, and AcmeBooks ERP. |
 | **Tailwind CSS v4** | UI Styling | Modern, dark-mode design system with responsive layouts and status badges. |

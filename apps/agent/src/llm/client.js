@@ -20,7 +20,7 @@ export class LlmClient {
    */
   constructor(config = {}) {
     this.apiKey = (config.apiKey || process.env.GEMINI_API_KEY || '').trim();
-    this.model = (config.model || process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
+    this.model = (config.model || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite').trim();
 
     if (this.apiKey) {
       this.ai = new GoogleGenAI({ apiKey: this.apiKey });
@@ -54,7 +54,7 @@ export class LlmClient {
           err?.message?.includes('86295s') ||
           err?.message?.includes('23h');
         if (isDailyExhausted) {
-          const fallbackModels = ['gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+          const fallbackModels = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
           const currentIndex = fallbackModels.indexOf(this.model);
           const nextModel = fallbackModels[(currentIndex + 1) % fallbackModels.length];
           if (nextModel && nextModel !== this.model) {
@@ -70,7 +70,7 @@ export class LlmClient {
           err?.message?.includes('UNAVAILABLE') ||
           err?.message?.includes('high demand');
         if (is503 && attempt < maxRetries) {
-          const fallbackModels = ['gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+          const fallbackModels = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
           const currentIndex = fallbackModels.indexOf(this.model);
           const nextModel = fallbackModels[(currentIndex + 1) % fallbackModels.length];
           console.warn(`[Gemini 503 High Demand on ${this.model}] Retrying with fallback model ${nextModel}...`);

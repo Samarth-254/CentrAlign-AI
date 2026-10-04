@@ -155,7 +155,7 @@ sequenceDiagram
     participant Console as Web Console (Next.js)
     participant Server as Agent Server (Express)
     participant Graph as LangGraph Engine
-    participant LLM as Google Gemini (2.5 Flash Lite)
+    participant LLM as Google Gemini (3.5 Flash Lite)
     participant Browser as Playwright Chromium
     participant ERP as AcmeBooks ERP
     participant Verifier as Independent Auditor

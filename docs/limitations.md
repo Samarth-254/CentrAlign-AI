@@ -15,7 +15,7 @@ An honest engineering assessment of the CentrAlign Autonomous Task Worker reveal
 - Fix: Implement a session pool with persistent storage of authenticated session cookies and credentials.
 
 ### 3. Dependence on Foundation Model Capability
-- Current State: The agent relies on Gemini 2.5 Flash Lite for planning and step-by-step tool selection.
+- Current State: The agent relies on Gemini 3.5 Flash Lite for planning and step-by-step tool selection.
 - Limitation: Complex multi-page tables can sometimes induce pagination exploration loops if the model forgets which pages it has already checked.
 - Fix: Inject structured navigation history into the observation prompt and maintain a visited URLs set in agent state.
 
