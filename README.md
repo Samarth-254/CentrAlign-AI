@@ -6,11 +6,6 @@
 
 ![CentrAlign Task Worker Console](docs/screenshots/console-completed-report-1440x900.png)
 
-### Demo Video
-DEMO_VIDEO_URL_HERE
-
-This video demonstrates the worker parsing a multi-page vendor invoice, navigating enterprise software, pausing for human approval on high-risk actions, recovering from chaos 500 errors, and completing independent ground-truth verification.
-
 ---
 
 ## Table of Contents
