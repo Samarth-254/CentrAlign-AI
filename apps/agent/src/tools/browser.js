@@ -3,13 +3,20 @@ import fs from 'node:fs';
 import { getPageSnapshot } from '../observation/snapshot.js';
 import { substituteSecrets, maskSecrets } from '../security/secrets.js';
 
+const defaultWebBase = process.env.WEB_BASE_URL || 'http://localhost:3000';
+let defaultWebHost = 'localhost';
+try {
+  defaultWebHost = new URL(defaultWebBase).hostname;
+} catch {}
+const DEFAULT_ALLOWED = Array.from(new Set(['localhost', '127.0.0.1', defaultWebHost]));
+
 /**
  * Check if a URL origin is allowed by policy
  * @param {string} urlStr
  * @param {string[]} allowedDomains
  * @returns {boolean}
  */
-export function isAllowedDomain(urlStr, allowedDomains = ['localhost', '127.0.0.1']) {
+export function isAllowedDomain(urlStr, allowedDomains = DEFAULT_ALLOWED) {
   try {
     const parsed = new URL(urlStr);
     return allowedDomains.some((d) => parsed.hostname === d || parsed.hostname.endsWith(`.${d}`));

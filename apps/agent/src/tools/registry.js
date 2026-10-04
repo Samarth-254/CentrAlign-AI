@@ -298,17 +298,21 @@ export function getGeminiFunctionDeclarations() {
       }
     }
 
-    const hasProps = Object.keys(properties).length > 0;
+    // Every tool call must include a specific rationale parameter
+    properties.rationale = {
+      type: 'STRING',
+      description: 'One specific sentence (8-30 words) explaining why this tool and arguments are chosen, citing concrete observation values or plan steps. Never use generic filler like "proceeding" or "next step".',
+    };
+    required.push('rationale');
+
     declarations.push({
       name,
       description: def.description,
-      parameters: hasProps
-        ? {
-            type: 'OBJECT',
-            properties,
-            required: required.length > 0 ? required : undefined,
-          }
-        : undefined,
+      parameters: {
+        type: 'OBJECT',
+        properties,
+        required,
+      },
     });
   }
 

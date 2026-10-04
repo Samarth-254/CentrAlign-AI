@@ -15,6 +15,9 @@ export function TopBar({
   toolCallCount = 0,
   maxToolCalls = 25,
   isChaosEnabled = false,
+  chaosDisabled = false,
+  chaosLabel = 'Chaos mode',
+  chaosSubtitle = null,
   onToggleChaos,
   isResetting = false,
   onResetDemoData,
@@ -105,12 +108,23 @@ export function TopBar({
         <div className="hidden sm:block h-4 w-px bg-[#242424]" />
 
         {/* Chaos Switch */}
-        <Switch
-          id="chaos-switch"
-          checked={isChaosEnabled}
-          onChange={onToggleChaos}
-          label="Chaos mode"
-        />
+        <div className="flex flex-col items-end justify-center">
+          <Switch
+            id="chaos-switch"
+            checked={isChaosEnabled}
+            onChange={onToggleChaos}
+            disabled={chaosDisabled}
+            label={chaosLabel}
+          />
+          {chaosSubtitle && (
+            <span
+              id="chaos-settings-label"
+              className="text-[10px] text-[#FF6A1A] font-mono mt-0.5 tracking-tight"
+            >
+              {chaosSubtitle}
+            </span>
+          )}
+        </div>
 
         {/* Reset Button */}
         <Button

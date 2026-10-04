@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
     "eval": "node evals/runner.js",
-    "agent:run": "node apps/agent/src/cli.js"
+    "agent:run": "node apps/agent/src/cli.js",
+    "demo:prep": "node scripts/demo-prep.js"
   },
   "devDependencies": {
     "eslint": "^9.20.0",

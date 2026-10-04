@@ -36,6 +36,7 @@ export async function finalizeNode(state, config) {
     runId,
     goal,
     status: finalStatus,
+    settings: runContext?.settings || state.settings || null,
     summary: isSuccess
       ? `Task autonomously completed and independently verified. ${verification?.summary || ''}`
       : (lastAction?.args?.claimedOutcome || error || verification?.summary || 'Task could not be verified successfully.'),
@@ -144,6 +145,10 @@ export function generateHtmlReport(report) {
     </div>
     <p><strong>Goal:</strong> ${report.goal}</p>
     <p><strong>Summary:</strong> ${report.summary}</p>
+    ${report.settings ? `
+    <p style="font-size: 0.875rem; color: #94a3b8;">
+      <strong>Execution Settings:</strong> Approval: ${report.settings.requireApprovalForWrites ? 'Enabled' : 'Disabled'}, Chaos Mode: ${report.settings.chaosMode ? 'Enabled' : 'Disabled'}, Headless: ${report.settings.headless ? 'Yes' : 'No'}
+    </p>` : ''}
     
     <div class="card">
       <h3 style="color: #38bdf8; margin-top: 0;">Extracted Business Data</h3>

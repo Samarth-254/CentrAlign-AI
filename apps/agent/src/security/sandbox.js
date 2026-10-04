@@ -10,7 +10,11 @@ import fs from 'node:fs';
  * @returns {string} Fully resolved safe absolute path
  */
 export function resolveSafePath(workspaceDir, inputPath = '.') {
-  const cleanPath = (typeof inputPath === 'string' && inputPath.trim() !== '') ? inputPath : '.';
+  let raw = inputPath;
+  if (typeof raw === 'object' && raw !== null && raw.value) {
+    raw = raw.value;
+  }
+  const cleanPath = (typeof raw === 'string' && raw.trim() !== '') ? raw : '.';
 
   // Normalize workspace path
   const normalizedWorkspace = path.resolve(workspaceDir);

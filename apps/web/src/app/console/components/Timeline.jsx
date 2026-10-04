@@ -80,7 +80,7 @@ export function Timeline({
             data.screenshot ||
             data.screenshotUrl ||
             (data.screenshotPath && evt.runId
-              ? `http://localhost:4000/runs/${evt.runId}/screenshots/${data.screenshotPath.split(/[/\\]/).pop()}`
+              ? `${process.env.NEXT_PUBLIC_AGENT_SERVER_URL || 'http://localhost:4000'}/runs/${evt.runId}/screenshots/${data.screenshotPath.split(/[/\\]/).pop()}`
               : null);
         }
       } else if (type === EVENT_TYPES.REFLECTION_COMPLETED) {

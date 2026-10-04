@@ -18,6 +18,8 @@ export function useRunStream(onStreamEnded) {
   const [pendingQuestion, setPendingQuestion] = useState(null);
   const [activeNode, setActiveNode] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [activeRunSettings, setActiveRunSettings] = useState(null);
+  const [activeRunAutoApprove, setActiveRunAutoApprove] = useState(false);
 
   const eventSourceRef = useRef(null);
   const timerRef = useRef(null);
@@ -42,6 +44,15 @@ export function useRunStream(onStreamEnded) {
     switch (type) {
       case EVENT_TYPES.NODE_ENTERED:
         setActiveNode(data.node);
+        break;
+
+      case EVENT_TYPES.RUN_STARTED:
+        if (data.settings) {
+          setActiveRunSettings(data.settings);
+        }
+        if (data.autoApprove !== undefined) {
+          setActiveRunAutoApprove(data.autoApprove);
+        }
         break;
 
       case EVENT_TYPES.UNDERSTANDING_PRODUCED:
@@ -405,10 +416,15 @@ export function useRunStream(onStreamEnded) {
     setVerification(loadedVerification);
     setFinalReport(reportToSet);
 
+    const runSettings = data.settings || data.finalReport?.settings || null;
+    setActiveRunSettings(runSettings);
+    setActiveRunAutoApprove(runAutoApprove);
+
     return {
       runId,
       goal: runGoal,
       autoApprove: runAutoApprove,
+      settings: runSettings,
       status: determinedStatus,
     };
   }, []);
@@ -428,6 +444,8 @@ export function useRunStream(onStreamEnded) {
     setPendingQuestion(null);
     setActiveNode(null);
     setElapsedSeconds(0);
+    setActiveRunSettings(null);
+    setActiveRunAutoApprove(false);
   }, []);
 
   // Compute tool calls count
@@ -467,5 +485,7 @@ export function useRunStream(onStreamEnded) {
     abortRun,
     loadPastRunDetails,
     resetActiveRun,
+    activeRunSettings,
+    activeRunAutoApprove,
   };
 }

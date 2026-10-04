@@ -64,6 +64,7 @@ export async function policyGateNode(state, config) {
     if (humanResponse && humanResponse.approved === false) {
       return {
         policyDecision: { allowed: false, reason: 'Action was rejected by human operator.' },
+        status: 'failed',
         error: 'Human operator rejected proposed mutation.',
       };
     }
@@ -84,9 +85,16 @@ export async function policyGateNode(state, config) {
                 if (
                   input.name?.toLowerCase() === keyLower ||
                   labelText.includes(keyLower) ||
-                  input.placeholder?.toLowerCase().includes(keyLower)
+                  input.placeholder?.toLowerCase().includes(keyLower) ||
+                  keyLower.includes(input.name?.toLowerCase() || '___')
                 ) {
-                  input.value = val;
+                  const prototype = Object.getPrototypeOf(input);
+                  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
+                  if (descriptor && descriptor.set) {
+                    descriptor.set.call(input, val);
+                  } else {
+                    input.value = val;
+                  }
                   input.dispatchEvent(new Event('input', { bubbles: true }));
                   input.dispatchEvent(new Event('change', { bubbles: true }));
                 }

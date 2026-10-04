@@ -34,5 +34,6 @@ export async function POST(request) {
 export async function GET() {
   const db = getDb();
   const setting = db.prepare("SELECT value FROM settings WHERE key = 'chaos_enabled'").get();
-  return NextResponse.json({ chaosEnabled: setting?.value === 'true' });
+  const enabled = setting?.value === 'true';
+  return NextResponse.json({ enabled, chaosEnabled: enabled });
 }

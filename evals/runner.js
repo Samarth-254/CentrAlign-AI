@@ -147,10 +147,20 @@ async function runSingleTask(task) {
   await resetEnvironment();
   await setChaosMode(!!task.chaos);
 
+  const autoApprove =
+    task.autoApprove !== undefined
+      ? task.autoApprove
+      : task.requireApproval === true
+        ? false
+        : true;
+
   const startTime = Date.now();
   const { runId, traceLogger, runPromise } = await startAgentRun({
     goal: task.goal,
-    autoApprove: true,
+    autoApprove,
+    policyOverrides: {
+      requireApprovalForWrites: !autoApprove,
+    },
   });
 
   let toolCallsCount = 0;
@@ -167,13 +177,22 @@ async function runSingleTask(task) {
 
   let runResult = await runPromise;
 
-  // Handle scripted human interaction if interrupted (e.g. T4 ambiguity)
-  if (runResult && runResult.status === 'awaiting_human') {
-    const responsePayload = task.scriptedHumanResponse || 'Enter latest Issued invoice (INT-225)';
-    runResult = await resumeAgentRun(runId, {
-      type: 'answer',
-      payload: { answer: responsePayload },
-    });
+  // Handle scripted human interaction if interrupted (e.g. T4 ambiguity or write approvals)
+  while (runResult && runResult.status === 'awaiting_human') {
+    const runRecord = getRun(runId);
+    const lastEvent = runRecord?.events?.[runRecord.events.length - 1];
+    if (lastEvent?.type === EVENT_TYPES.APPROVAL_REQUESTED) {
+      runResult = await resumeAgentRun(runId, {
+        type: 'approval',
+        payload: { approved: true },
+      });
+    } else {
+      const responsePayload = task.scriptedHumanResponse || 'Enter latest Issued invoice (INT-225)';
+      runResult = await resumeAgentRun(runId, {
+        type: 'answer',
+        payload: { answer: responsePayload },
+      });
+    }
   }
 
   const durationMs = Date.now() - startTime;

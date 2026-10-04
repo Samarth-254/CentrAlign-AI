@@ -1,3 +1,8 @@
+const AGENT_SERVER_URL =
+  process.env.AGENT_SERVER_URL ||
+  process.env.NEXT_PUBLIC_AGENT_SERVER_URL ||
+  'http://localhost:4000';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -6,7 +11,7 @@ const nextConfig = {
     return [
       {
         source: '/runs/:path*',
-        destination: 'http://localhost:4000/runs/:path*',
+        destination: `${AGENT_SERVER_URL}/runs/:path*`,
       },
     ];
   },

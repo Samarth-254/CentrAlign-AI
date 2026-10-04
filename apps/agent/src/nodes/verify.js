@@ -47,9 +47,12 @@ export async function verifyNode(state, config) {
   const targetInvoice = memory.invoiceNumber || (sourcePdfData?.invoiceNumber?.value) || (invoiceMatch ? invoiceMatch[1].toUpperCase() : null);
 
   // 1. Independent Cross-check: Re-extract source PDF if applicable
-  if (memory.downloadedPdf && fs.existsSync(memory.downloadedPdf)) {
+  const pdfPath = typeof memory.downloadedPdf === 'object' && memory.downloadedPdf !== null
+    ? (memory.downloadedPdf.value || memory.downloadedPdf.path)
+    : memory.downloadedPdf;
+  if (pdfPath && typeof pdfPath === 'string' && fs.existsSync(pdfPath)) {
     try {
-      const buffer = fs.readFileSync(memory.downloadedPdf);
+      const buffer = fs.readFileSync(pdfPath);
       const text = await extractTextFromPdfBuffer(buffer);
       sourcePdfData = extractFieldsWithRegex(text, ['invoiceNumber', 'totalAmount', 'dueDate', 'issueDate']);
     } catch (err) {
@@ -57,11 +60,13 @@ export async function verifyNode(state, config) {
     }
   }
 
+const WEB_BASE_URL = process.env.WEB_BASE_URL || 'http://localhost:3000';
+
   // 2. Re-open System of Record (AcmeBooks ERP)
   if (page) {
     try {
       // Navigate to bills ledger directly to audit ground truth
-      await page.goto('http://localhost:3000/erp/bills', { waitUntil: 'load', timeout: 10000 });
+      await page.goto(`${WEB_BASE_URL}/erp/bills`, { waitUntil: 'load', timeout: 10000 });
       billsTableSnapshot = await getPageSnapshot(page, {
         screenshotsDir,
         stepIndex: `verify_ledger_${verificationAttempts}`,
@@ -282,7 +287,7 @@ export function evaluateDeterministicAudit(ctx) {
     }
 
     let screenshotDataUrl = null;
-    if (targetScreenshotPath && fs.existsSync(targetScreenshotPath)) {
+    if (typeof targetScreenshotPath === 'string' && fs.existsSync(targetScreenshotPath)) {
       try {
         const buf = fs.readFileSync(targetScreenshotPath);
         screenshotDataUrl = `data:image/png;base64,${buf.toString('base64')}`;

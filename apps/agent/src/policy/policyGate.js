@@ -28,7 +28,7 @@ export async function evaluatePolicyGate(toolCall, options = {}) {
   // 2. Allowed domain check for browser_goto
   if (name === 'browser_goto') {
     const url = args.url || '';
-    const allowed = isAllowedDomain(url, policy.allowedDomains || ['localhost', '127.0.0.1']);
+    const allowed = isAllowedDomain(url, policy.allowedDomains);
     if (!allowed) {
       return {
         allowed: false,

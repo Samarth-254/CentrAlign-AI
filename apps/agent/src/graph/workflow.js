@@ -53,8 +53,8 @@ export function createAgentWorkflow(options = {}) {
 
     // Policy gate route
     .addConditionalEdges('node_policy_gate', (state) => {
-      if (state.policyDecision && !state.policyDecision.allowed) {
-        return 'node_reflect';
+      if (state.status === 'failed' || (state.policyDecision && !state.policyDecision.allowed)) {
+        return 'node_finalize';
       }
       return 'node_execute';
     })

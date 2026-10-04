@@ -43,18 +43,53 @@ export class LlmClient {
    * @param {number} [maxRetries=2]
    * @returns {Promise<*>}
    */
-  async _withRetry(fn, maxRetries = 3) {
+  async _withRetry(fn, maxRetries = 6) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
       } catch (err) {
+        const isDailyExhausted =
+          err?.message?.includes('GenerateRequestsPerDayPerProjectPerModel') ||
+          err?.message?.includes('limit: 500') ||
+          err?.message?.includes('86295s') ||
+          err?.message?.includes('23h');
+        if (isDailyExhausted) {
+          const fallbackModels = ['gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+          const currentIndex = fallbackModels.indexOf(this.model);
+          const nextModel = fallbackModels[(currentIndex + 1) % fallbackModels.length];
+          if (nextModel && nextModel !== this.model) {
+            console.warn(`[Gemini Daily Quota Reached on ${this.model}] Seamlessly switching to ${nextModel}...`);
+            this.model = nextModel;
+            continue;
+          }
+        }
+
+        const is503 =
+          err?.message?.includes('503') ||
+          err?.status === 503 ||
+          err?.message?.includes('UNAVAILABLE') ||
+          err?.message?.includes('high demand');
+        if (is503 && attempt < maxRetries) {
+          const fallbackModels = ['gemini-2.5-flash', 'gemini-3.1-flash-lite'];
+          const currentIndex = fallbackModels.indexOf(this.model);
+          const nextModel = fallbackModels[(currentIndex + 1) % fallbackModels.length];
+          console.warn(`[Gemini 503 High Demand on ${this.model}] Retrying with fallback model ${nextModel}...`);
+          this.model = nextModel;
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+
         const is429 =
           err?.message?.includes('429') ||
           err?.message?.includes('RESOURCE_EXHAUSTED') ||
           err?.status === 'RESOURCE_EXHAUSTED';
         if (is429 && attempt < maxRetries) {
-          const delay = (attempt + 1) * 5000;
-          console.warn(`[Gemini Rate Limit 429] Waiting ${delay / 1000}s before retry (attempt ${attempt + 1}/${maxRetries})...`);
+          let delay = Math.max((attempt + 1) * 15000, 20000);
+          const match = err?.message?.match(/Please retry in ([\d.]+)s/);
+          if (match && match[1]) {
+            delay = Math.ceil(parseFloat(match[1]) * 1000) + 1500;
+          }
+          console.warn(`[Gemini Rate Limit 429] Waiting ${Math.round(delay / 1000)}s before retry (attempt ${attempt + 1}/${maxRetries})...`);
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
@@ -186,10 +221,14 @@ export class LlmClient {
     const functionCalls = response.functionCalls;
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
+      const args = { ...(call.args || {}) };
+      const rationale = (args.rationale || (response.text ? response.text.trim() : '')).trim();
+      delete args.rationale; // Keep args clean for tool handler execution
+
       return {
         name: call.name,
-        args: call.args || {},
-        rationale: response.text ? response.text.trim() : 'Proceeding with next strategic step.',
+        args,
+        rationale,
       };
     }
 
@@ -199,18 +238,22 @@ export class LlmClient {
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
+        const args = { ...(parsed.args || {}) };
+        const rationale = (parsed.rationale || args.rationale || text).trim();
+        delete args.rationale;
+
         if (parsed.name && (parsed.args !== undefined)) {
           return {
             name: parsed.name,
-            args: parsed.args || {},
-            rationale: parsed.rationale || text,
+            args,
+            rationale,
           };
         }
         if (parsed.tool) {
           return {
             name: parsed.tool,
-            args: parsed.args || {},
-            rationale: parsed.rationale || text,
+            args,
+            rationale,
           };
         }
       } catch {

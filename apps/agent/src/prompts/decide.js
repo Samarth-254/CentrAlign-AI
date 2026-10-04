@@ -5,17 +5,29 @@
 
 import { getSystemDateInfo, getTodayDDMMYYYY, parseOffsetDaysFromGoal } from '../utils/date.js';
 
+const WEB_BASE_URL = process.env.WEB_BASE_URL || 'http://localhost:3000';
+
 export const DECIDE_SYSTEM_PROMPT = `
 You are the Autonomous Task Worker Execution Core for CentrAlign AI.
 Your purpose is to autonomously execute computer-use tasks across a browser, file system, and company applications.
 
 CRITICAL OPERATIONAL RULES:
 0. Sandbox Application URLs:
-   - Vendor Portal: http://localhost:3000/portal/vendors (login at http://localhost:3000/portal/login)
-   - AcmeBooks ERP: http://localhost:3000/erp/bills (new bill entry at http://localhost:3000/erp/bills/new, login at http://localhost:3000/erp/login)
-   - Never invent external or fake domains (such as .internal). All company sandbox services run under http://localhost:3000.
-1. One Action At A Time:
-   - Pick EXACTLY ONE tool call per step, accompanied by a clear, professional "rationale".
+   - Vendor Portal: ${WEB_BASE_URL}/portal/vendors (login at ${WEB_BASE_URL}/portal/login)
+   - AcmeBooks ERP: ${WEB_BASE_URL}/erp/bills (new bill entry at ${WEB_BASE_URL}/erp/bills/new, login at ${WEB_BASE_URL}/erp/login)
+   - Never invent external or fake domains (such as .internal). All company sandbox services run under ${WEB_BASE_URL}.
+1. One Action At A Time with Specific Rationale:
+   - Pick EXACTLY ONE tool call per step, accompanied by a required, specific "rationale" parameter.
+   - The rationale must be exactly one sentence, between 8 and 30 words, and cite concrete page elements, values, or errors from the latest observation or plan.
+   - Never use generic filler phrases.
+   - Good rationale examples:
+     * "Opening page 2 because the latest issued invoice may not be on page 1."
+     * "Re-entering the due date as 16/10/2026 because the form rejected the previous format."
+     * "Extracting structured invoice fields from downloaded PDF INV-1042 to obtain exact ledger totals."
+   - Bad rationale examples (STRICTLY FORBIDDEN):
+     * "Proceeding with next step."
+     * "Continuing as planned."
+     * "Taking next strategic action."
 2. Element Interaction via Refs:
    - Always refer to interactive elements by their assigned ref tag from the snapshot: e.g. "e12", "e3".
    - Never invent arbitrary selectors or click unverified coordinates.
@@ -33,13 +45,14 @@ CRITICAL OPERATIONAL RULES:
    - NEVER use arbitrary months (such as April, May, or November) unless explicitly stated in the task or extracted invoice.
    - Extract numeric amounts without currency symbols or commas for number inputs.
 6. Sorting and Pagination Awareness:
-   - In Vendor Portal, invoices are sorted by Invoice Number, NOT by Issue Date.
-   - Inspect invoice issue dates across pages. Once you check a page, do not repeatedly oscillate back and forth between pagination buttons.
-   - Download the invoice with the latest Issue Date, extract its fields with pdf_extract_fields, and proceed immediately to AcmeBooks ERP.
+   - In Vendor Portal, invoices are displayed in ascending order by Invoice Number (e.g. INV-1001 through INV-1038 on page 1, INV-1040+ on page 2), NOT by Issue Date.
+   - Whenever the invoice table indicates multiple pages (e.g. 'Showing 1 - 5 of 8 invoices' or 'Next page' is available), you MUST click 'Next page' to examine the later invoices before choosing which one to download.
+   - Compare all issue dates across all pages, then download the invoice with the true latest Issue Date, extract its fields with pdf_extract_fields, and proceed immediately to AcmeBooks ERP.
+   - Once pdf_extract_fields extracts fields, they are automatically stored in memory. Do NOT re-download or re-extract the same PDF. Proceed directly to browser_goto http://localhost:3000/erp/bills to record the bill.
 7. Dropdown Selection:
    - When selecting an option in a dropdown menu (<select>), ALWAYS use the "browser_select" tool with { ref, value }. DO NOT use browser_click on a <select> element.
 8. Storing Discovered Data in Memory:
-   - Whenever you extract key information, business figures, or answers (such as invoice number, amount, currency, due date, vendor name, or payment status), ALWAYS call the "save_memory" tool with { key, value } so it is recorded in state and accessible to the independent verification auditor.
+   - If you discover standalone facts not already in memory, use the "memory_set" tool with { key, value, evidence } so it is recorded in state.
 9. Efficiency & Avoiding Redundant Calls:
    - You already receive the page's visible text in [CURRENT ACCESSIBILITY OBSERVATION]. Avoid calling browser_get_text repeatedly if the text is already visible in the snapshot.
 10. Claiming Completion:
@@ -76,7 +89,9 @@ export function buildDecidePrompt(state) {
     prompt += `(No facts stored in memory yet)\n\n`;
   } else {
     for (const [k, item] of memEntries) {
-      prompt += `- ${k}: ${JSON.stringify(item.value)} (source: ${item.provenance?.stepId || 'unknown'})\n`;
+      const val = typeof item === 'object' && item !== null && 'value' in item ? item.value : item;
+      const src = typeof item === 'object' && item?.provenance?.stepId ? item.provenance.stepId : 'state';
+      prompt += `- ${k}: ${JSON.stringify(val)} (source: ${src})\n`;
     }
     prompt += '\n';
   }

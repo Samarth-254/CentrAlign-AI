@@ -25,6 +25,11 @@ const RUNS_ROOT = path.resolve(__dirname, '../runs');
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'centralign-agent' });
+});
+
 // Serve run screenshots
 app.get('/runs/:id/screenshots/:filename', (req, res) => {
   const { id, filename } = req.params;
@@ -203,7 +208,7 @@ process.on('uncaughtException', (err) => {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => {
-    console.log(`🚀 CentrAlign Agent Server running on http://localhost:${PORT}`);
+    console.log(`CentrAlign Agent Server running on port ${PORT}`);
   });
 }
 

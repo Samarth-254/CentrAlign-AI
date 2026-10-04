@@ -33,6 +33,7 @@ export async function executeNode(state, config) {
   logger?.emit(EVENT_TYPES.TOOL_STARTED, {
     tool: lastAction?.name,
     args: maskSecretsDeep(lastAction?.args || {}),
+    rationale: lastAction?.rationale,
   });
 
   const ctx = {
@@ -52,6 +53,7 @@ export async function executeNode(state, config) {
     result: maskSecretsDeep(toolResult.result),
     error: toolResult.error,
     durationMs: toolResult.durationMs,
+    rationale: lastAction?.rationale,
   });
 
   logger?.emit(EVENT_TYPES.NODE_EXITED, { node: 'execute' });
@@ -60,13 +62,28 @@ export async function executeNode(state, config) {
   const memoryUpdates = {};
   if (toolResult.ok && toolResult.result) {
     if (lastAction.name === 'browser_download' && toolResult.result.savedPath) {
-      memoryUpdates.downloadedPdf = toolResult.result.savedPath;
-      memoryUpdates.pdfFilename = toolResult.result.filename;
+      memoryUpdates.downloadedPdf = {
+        value: toolResult.result.savedPath,
+        provenance: { stepId: 'download', evidence: toolResult.result.filename || '' },
+      };
+      memoryUpdates.pdfFilename = {
+        value: toolResult.result.filename,
+        provenance: { stepId: 'download', evidence: toolResult.result.filename || '' },
+      };
     }
     if (lastAction.name === 'pdf_extract_fields' && toolResult.result.fields) {
       for (const [k, v] of Object.entries(toolResult.result.fields)) {
-        memoryUpdates[k] = v.value;
+        memoryUpdates[k] = {
+          value: v.value,
+          provenance: { stepId: 'pdf_extract_fields', evidence: v.snippet || '' },
+        };
       }
+    }
+    if (lastAction.name === 'memory_set' && toolResult.result.savedKey) {
+      memoryUpdates[toolResult.result.savedKey] = {
+        value: toolResult.result.value,
+        provenance: toolResult.result.provenance,
+      };
     }
   }
 

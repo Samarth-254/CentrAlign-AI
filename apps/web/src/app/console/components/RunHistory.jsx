@@ -103,9 +103,65 @@ export function RunHistory({
                     {run.goal}
                   </p>
 
-                  <div className="flex items-center justify-between text-[10px] font-mono text-[#8C8C8C]">
-                    <span className="capitalize">{run.status}</span>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-[#8C8C8C] mb-1.5">
+                    <span className="capitalize font-medium">{run.status}</span>
                     {run.durationMs && <span>{formatDuration(run.durationMs)}</span>}
+                  </div>
+
+                  {/* Settings Badges */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Approval Badge */}
+                    {run.settings?.requireApprovalForWrites !== undefined ? (
+                      <span
+                        title="Require approval for write actions"
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border ${
+                          run.settings.requireApprovalForWrites
+                            ? 'bg-[#FF6A1A]/10 text-[#FF6A1A] border-[#FF6A1A]/20'
+                            : 'bg-[#161616] text-[#8C8C8C] border-[#242424]'
+                        }`}
+                      >
+                        {run.settings.requireApprovalForWrites ? 'Approval on' : 'Approval off'}
+                      </span>
+                    ) : run.autoApprove !== undefined ? (
+                      <span
+                        title="Require approval for write actions"
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border ${
+                          !run.autoApprove
+                            ? 'bg-[#FF6A1A]/10 text-[#FF6A1A] border-[#FF6A1A]/20'
+                            : 'bg-[#161616] text-[#8C8C8C] border-[#242424]'
+                        }`}
+                      >
+                        {!run.autoApprove ? 'Approval on' : 'Approval off'}
+                      </span>
+                    ) : (
+                      <span
+                        title="Approval setting unknown"
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border bg-[#161616] text-[#5E5E5E] border-[#242424]"
+                      >
+                        Approval unknown
+                      </span>
+                    )}
+
+                    {/* Chaos Badge */}
+                    {run.settings?.chaosMode !== undefined ? (
+                      <span
+                        title="Chaos network/server 500 fault injection mode"
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border ${
+                          run.settings.chaosMode
+                            ? 'bg-[#FF6A1A]/10 text-[#FF6A1A] border-[#FF6A1A]/20'
+                            : 'bg-[#161616] text-[#8C8C8C] border-[#242424]'
+                        }`}
+                      >
+                        {run.settings.chaosMode ? 'Chaos on' : 'Chaos off'}
+                      </span>
+                    ) : (
+                      <span
+                        title="Chaos setting unknown"
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded-[3px] border bg-[#161616] text-[#5E5E5E] border-[#242424]"
+                      >
+                        Chaos unknown
+                      </span>
+                    )}
                   </div>
                 </button>
               );

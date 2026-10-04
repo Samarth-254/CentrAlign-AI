@@ -1,7 +1,110 @@
+import { z } from 'zod';
 import { EVENT_TYPES } from '@centralign/shared';
 import { DECIDE_SYSTEM_PROMPT, buildDecidePrompt } from '../prompts/decide.js';
 import { detectActionLoop } from '../policy/loopDetection.js';
 import { getTodayDDMMYYYY, parseOffsetDaysFromGoal } from '../utils/date.js';
+
+const WEB_BASE_URL = process.env.WEB_BASE_URL || 'http://localhost:3000';
+
+const FORBIDDEN_FILLERS = [
+  'proceeding',
+  'next step',
+  'continuing',
+  'as planned',
+  'strategic',
+];
+
+/**
+ * Zod schema enforcing honest, concrete, one-sentence rationale (8-30 words)
+ */
+export const RationaleSchema = z
+  .string()
+  .min(10, 'Rationale must be at least 10 characters long.')
+  .refine(
+    (text) => {
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      return words.length >= 8 && words.length <= 35;
+    },
+    {
+      message: 'Rationale must be a single concise sentence between 8 and 30 words.',
+    }
+  )
+  .refine(
+    (text) => {
+      const lower = text.toLowerCase();
+      return !FORBIDDEN_FILLERS.some((f) => lower.includes(f));
+    },
+    {
+      message: 'Rationale contains forbidden generic filler phrases ("proceeding", "next step", "continuing", "as planned", "strategic"). Must cite concrete page data, values, or plan milestones.',
+    }
+  );
+
+/**
+ * Deterministic honest fallback rationale derived from tool name, arguments, and current state
+ */
+export function deriveHonestFallbackRationale(toolName, args = {}, state = {}) {
+  const currentUrl = state.lastObservation?.url || '';
+  const goal = state.goal || state.understanding?.objective || '';
+
+  switch (toolName) {
+    case 'browser_goto': {
+      const url = args.url || '';
+      if (url.includes('/portal/login')) {
+        return 'Navigating to the vendor portal authentication page to log in and access billing records.';
+      }
+      if (url.includes('/portal/vendors')) {
+        return 'Navigating to the vendor portal directory to inspect and locate invoices.';
+      }
+      if (url.includes('/erp/bills/new')) {
+        return 'Opening the new bill creation form in AcmeBooks ERP to record payable details.';
+      }
+      if (url.includes('/erp/bills')) {
+        return 'Navigating to the AcmeBooks bills ledger to verify existing entries and prevent duplicate payments.';
+      }
+      if (url.includes('/erp/login')) {
+        return 'Navigating to the AcmeBooks ERP authentication page to sign in with finance credentials.';
+      }
+      return `Navigating to ${url} to inspect available controls and billing information.`;
+    }
+    case 'browser_type': {
+      const text = String(args.text || '');
+      if (text.includes('PORTAL') || text.includes('ERP')) {
+        return `Entering authentication credentials into field ${args.ref} to gain system access.`;
+      }
+      if (text.includes('/') || text.includes('-')) {
+        return `Typing formatted date ${text} into form input ${args.ref} according to invoice records.`;
+      }
+      return `Entering value ${text.slice(0, 20)} into input field ${args.ref} to complete the required form data.`;
+    }
+    case 'browser_click': {
+      if (currentUrl.includes('/vendors') && (args.ref === 'e9' || args.ref === 'e7')) {
+        return `Navigating pages in the invoice list using pagination control ${args.ref} to find the latest invoice.`;
+      }
+      return `Clicking interactive element ${args.ref} on the current screen to advance the workflow step.`;
+    }
+    case 'browser_select': {
+      return `Selecting dropdown option "${args.value}" in element ${args.ref} to match the vendor record.`;
+    }
+    case 'browser_download': {
+      return `Downloading invoice document using link ${args.ref} to run workspace for field extraction.`;
+    }
+    case 'pdf_extract_fields': {
+      return `Extracting structured financial fields from downloaded PDF ${args.path || 'document'} to verify invoice numbers and amounts.`;
+    }
+    case 'save_memory': {
+      return `Saving extracted business value for ${args.key} with provenance evidence into agent memory.`;
+    }
+    case 'ask_human': {
+      return `Requesting human clarification regarding ${args.question ? args.question.slice(0, 30) : 'ambiguous requirements'} before proceeding.`;
+    }
+    case 'finish': {
+      return 'Concluding execution and submitting claimed outcome for independent verification against the system of record.';
+    }
+    default: {
+      return `Executing tool ${toolName} to make progress toward completing the objective: ${goal.slice(0, 40)}.`;
+    }
+  }
+}
 
 /**
  * Decide Node (ReAct Step)
@@ -26,7 +129,7 @@ export async function decideNode(state, config) {
           claimedOutcome: `Execution halted: Reached hard cap of ${maxCalls} tool calls.`,
           summary: 'Tool budget exhausted.',
         },
-        rationale: 'Budget limit reached.',
+        rationale: 'Concluding execution because the hard limit of 30 tool calls was reached.',
       },
     };
   }
@@ -46,7 +149,7 @@ export async function decideNode(state, config) {
         lastAction: {
           name: 'browser_snapshot',
           args: {},
-          rationale: 'Breaking action loop: taking a fresh snapshot to re-anchor page refs.',
+          rationale: 'Re-anchoring snapshot because identical consecutive actions were detected by loop policy.',
         },
       };
     }
@@ -72,12 +175,40 @@ export async function decideNode(state, config) {
         systemInstruction: DECIDE_SYSTEM_PROMPT,
         prompt,
       });
+
+      // Validate rationale with Zod schema
+      const rationaleValidation = RationaleSchema.safeParse(toolCall.rationale);
+      if (!rationaleValidation.success) {
+        const errorMsg = rationaleValidation.error.issues[0]?.message || 'Invalid rationale';
+        // One-shot repair attempt
+        try {
+          const repairPrompt = `${prompt}\n\nCRITICAL ERROR: Your previous rationale "${toolCall.rationale}" was rejected: ${errorMsg}.\nYou MUST provide a single specific sentence (8-30 words) referencing concrete elements from the page or plan, with ZERO generic filler words.`;
+          const repaired = await llmClient.decideNextAction({
+            systemInstruction: DECIDE_SYSTEM_PROMPT,
+            prompt: repairPrompt,
+          });
+          const reCheck = RationaleSchema.safeParse(repaired.rationale);
+          if (reCheck.success) {
+            toolCall = repaired;
+          } else {
+            toolCall.rationale = deriveHonestFallbackRationale(toolCall.name, toolCall.args, state);
+          }
+        } catch {
+          toolCall.rationale = deriveHonestFallbackRationale(toolCall.name, toolCall.args, state);
+        }
+      }
     } catch (err) {
       console.warn('LLM decideNextAction failed (e.g. rate limit), falling back to heuristic:', err.message);
       toolCall = buildHeuristicNextAction(state);
     }
   } else {
     toolCall = buildHeuristicNextAction(state);
+  }
+
+  // Guarantee rationale is always compliant and never generic
+  const finalCheck = RationaleSchema.safeParse(toolCall.rationale);
+  if (!finalCheck.success) {
+    toolCall.rationale = deriveHonestFallbackRationale(toolCall.name, toolCall.args, state);
   }
 
   logger?.emit(EVENT_TYPES.ACTION_PROPOSED, {
@@ -115,13 +246,13 @@ export function buildHeuristicNextAction(state) {
     if (isExplicitCreateBill || isExplicitMarkPaidGoal) {
       return {
         name: 'browser_goto',
-        args: { url: 'http://localhost:3000/erp/bills' },
+        args: { url: `${WEB_BASE_URL}/erp/bills` },
         rationale: 'Navigating to AcmeBooks ERP to manage bills.',
       };
     }
     return {
       name: 'browser_goto',
-      args: { url: 'http://localhost:3000/portal/vendors' },
+      args: { url: `${WEB_BASE_URL}/portal/vendors` },
       rationale: 'Navigating to Vendor Portal to find vendor and invoices.',
     };
   }
@@ -193,7 +324,7 @@ export function buildHeuristicNextAction(state) {
   if (memory.invoiceNumber && !obs.includes('/erp')) {
     return {
       name: 'browser_goto',
-      args: { url: 'http://localhost:3000/erp/bills' },
+      args: { url: `${WEB_BASE_URL}/erp/bills` },
       rationale: 'Invoice data extracted. Navigating to AcmeBooks ERP to enter bill.',
     };
   }

@@ -161,9 +161,10 @@ export const fileTools = {
    * Extract specific structured fields from a PDF with provenance snippets and confidence
    */
   async pdf_extract_fields({ path: filePath, fieldsWanted }, ctx) {
-    const safePath = resolveSafePath(ctx.workspaceDir, filePath);
+    const rawPath = (typeof filePath === 'object' && filePath !== null && filePath.value) ? filePath.value : filePath;
+    const safePath = resolveSafePath(ctx.workspaceDir, rawPath);
     if (!fs.existsSync(safePath)) {
-      throw new Error(`PDF file not found: "${filePath}"`);
+      throw new Error(`PDF file not found: "${rawPath}"`);
     }
 
     const buffer = fs.readFileSync(safePath);

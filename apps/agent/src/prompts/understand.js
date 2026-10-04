@@ -27,6 +27,7 @@ Core Principles:
    - Write concrete, falsifiable success criteria that an independent auditor can verify with direct evidence (e.g., "A bill exists in AcmeBooks for Northwind Traders, invoice INV-1042, with amount 12450.00 and due date 15/12/2026").
 5. Ambiguity Detection:
    - If there is a genuine ambiguity that cannot be safely inferred (for example, a Draft invoice with a newer date than the latest Issued invoice, or missing vendor identity), flag it in missingInfo.
+   - Do NOT mark invoice numbers, amounts, or due dates as missingInfo if the goal asks the agent to find or extract them from a portal or invoice PDF. Discovering facts during execution is normal operation, NOT missing info. Keep missingInfo empty ([]) unless the user prompt itself is ambiguous and requires human clarification before proceeding.
 
 Output Format:
 You must respond with valid JSON adhering to:

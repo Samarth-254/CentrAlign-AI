@@ -37,11 +37,33 @@ export async function startAgentRun(params) {
   fs.mkdirSync(workspaceDir, { recursive: true });
   fs.mkdirSync(screenshotsDir, { recursive: true });
 
+  const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
+  let realChaosMode = false;
+  try {
+    const chaosRes = await fetch(`${webBaseUrl}/api/chaos`, { signal: AbortSignal.timeout(2000) });
+    if (chaosRes.ok) {
+      const chaosData = await chaosRes.json();
+      realChaosMode = !!(chaosData.enabled ?? chaosData.chaosEnabled);
+    }
+  } catch {
+    realChaosMode = false;
+  }
+
+  const effectiveApproval = autoApprove ? false : (policyOverrides.requireApprovalForWrites ?? true);
+  const isHeadless = process.env.HEADLESS !== 'false';
+
+  const settings = {
+    requireApprovalForWrites: effectiveApproval,
+    chaosMode: realChaosMode,
+    askOnAmbiguity: policyOverrides.askOnAmbiguity ?? true,
+    headless: isHeadless,
+    startedAt: new Date().toISOString(),
+  };
+
   const traceLogger = new TraceLogger(runId, runDir);
-  traceLogger.emit(EVENT_TYPES.RUN_STARTED, { goal, autoApprove });
+  traceLogger.emit(EVENT_TYPES.RUN_STARTED, { goal, autoApprove: !effectiveApproval, settings });
 
   // Initialize Playwright browser
-  const isHeadless = process.env.HEADLESS !== 'false';
   const browser = await chromium.launch({
     headless: isHeadless,
     args: ['--disable-dev-shm-usage', '--no-sandbox'],
@@ -59,9 +81,16 @@ export async function startAgentRun(params) {
   // Create compiled LangGraph workflow
   const workflow = createAgentWorkflow();
 
+  let webHostname = 'localhost';
+  try {
+    webHostname = new URL(webBaseUrl).hostname;
+  } catch {}
+  const defaultAllowedDomains = Array.from(new Set(['localhost', '127.0.0.1', webHostname]));
+
   const runContext = {
     runId,
     goal,
+    settings,
     runDir,
     workspaceDir,
     screenshotsDir,
@@ -71,11 +100,11 @@ export async function startAgentRun(params) {
     llmClient,
     logger: traceLogger,
     workflow,
-    autoApprove,
+    autoApprove: !effectiveApproval,
     policy: {
-      requireApprovalForWrites: true,
-      askOnAmbiguity: true,
-      allowedDomains: ['localhost', '127.0.0.1'],
+      requireApprovalForWrites: effectiveApproval,
+      askOnAmbiguity: settings.askOnAmbiguity,
+      allowedDomains: defaultAllowedDomains,
       maxToolCalls: 30,
       maxRetriesPerStep: 3,
       ...policyOverrides,
@@ -265,13 +294,13 @@ export function getRun(runId) {
       runId,
       goal,
       autoApprove,
+      settings: active.settings || null,
       status: runStatus,
       events,
       finalReport: report || active.latestState?.finalReport || null,
       active: isStillActive,
     };
   }
-
 
   // Check saved run on disk
   const tracePath = path.join(runDir, 'trace.jsonl');
@@ -291,6 +320,7 @@ export function getRun(runId) {
 
     let goal = report?.goal || null;
     let autoApprove = false;
+    let settings = report?.settings || null;
     let runStatus = report?.status || null;
     let summary = report?.summary || null;
 
@@ -298,6 +328,7 @@ export function getRun(runId) {
       if (evt.type === 'run.started') {
         if (!goal && evt.data?.goal) goal = evt.data.goal;
         if (evt.data?.autoApprove !== undefined) autoApprove = !!evt.data.autoApprove;
+        if (!settings && evt.data?.settings) settings = evt.data.settings;
       }
       if (evt.type === 'run.completed') {
         if (!runStatus) runStatus = 'completed';
@@ -320,6 +351,7 @@ export function getRun(runId) {
         runId,
         goal: goal || 'Autonomous Agent Task',
         status: runStatus,
+        settings: settings || null,
         summary: summary || 'Run finalized.',
         outcome: summary,
         extractedData: {},
@@ -331,6 +363,7 @@ export function getRun(runId) {
       runId,
       goal: goal || '',
       autoApprove,
+      settings: settings || report?.settings || null,
       status: runStatus,
       events,
       finalReport: report,
@@ -358,6 +391,7 @@ export function listAllRuns() {
           runId: run.runId,
           goal: run.goal || run.finalReport?.goal || '',
           autoApprove: run.autoApprove,
+          settings: run.settings || null,
           status: run.status,
           eventsCount: run.events?.length || 0,
           summary: run.finalReport?.summary || '',

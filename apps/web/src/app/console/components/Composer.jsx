@@ -42,8 +42,14 @@ export function Composer({
   setGoal,
   autoApprove,
   setAutoApprove,
+  approvalDisabled = false,
+  approvalLabel = 'Require approval for writes',
+  approvalSubtitle = null,
   onRun,
   isRunning,
+  isPastRun = false,
+  onRunAgain,
+  onNewTask,
   onAbort,
 }) {
   const [isFocused, setIsFocused] = useState(false);
@@ -105,7 +111,12 @@ export function Composer({
             <button
               key={task.id}
               type="button"
-              onClick={() => setGoal(task.goal)}
+              onClick={() => {
+                if (isPastRun && onNewTask) {
+                  onNewTask();
+                }
+                setGoal(task.goal);
+              }}
               className={`text-[12px] px-2.5 py-0.5 rounded-[6px] border transition-colors cursor-pointer ${
                 goal === task.goal
                   ? 'bg-[#1C1C1C] border-[#FF6A1A] text-[#FF6A1A]'
@@ -143,9 +154,11 @@ export function Composer({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          disabled={isRunning}
+          disabled={isRunning || isPastRun}
           placeholder="Enter a task (e.g. Find the latest invoice from Northwind Traders, extract amount and due date, enter into AcmeBooks)..."
-          className="w-full bg-transparent text-[#EDEDED] text-[13px] p-2.5 placeholder-[#5E5E5E] resize-none focus:outline-none"
+          className={`w-full bg-transparent text-[#EDEDED] text-[13px] p-2.5 placeholder-[#5E5E5E] resize-none focus:outline-none ${
+            isPastRun ? 'cursor-not-allowed opacity-80' : ''
+          }`}
         />
 
         {/* Action Row inside Composer */}
@@ -156,9 +169,17 @@ export function Composer({
               id="auto-approve-toggle"
               checked={!autoApprove}
               onChange={(requireApprove) => setAutoApprove(!requireApprove)}
-              disabled={isRunning}
-              label="Require approval for writes"
+              disabled={approvalDisabled || isRunning}
+              label={approvalLabel}
             />
+            {approvalSubtitle && (
+              <span
+                id="approval-settings-label"
+                className="text-[10px] text-[#FF6A1A] font-mono px-1.5 py-0.5 rounded bg-[#FF6A1A]/10 border border-[#FF6A1A]/20"
+              >
+                {approvalSubtitle}
+              </span>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -172,6 +193,26 @@ export function Composer({
               >
                 Abort run
               </Button>
+            ) : isPastRun ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  id="run-again-button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={onRunAgain}
+                  className="font-medium"
+                >
+                  Run again
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={onNewTask}
+                  className="font-semibold"
+                >
+                  + New task
+                </Button>
+              </div>
             ) : (
               <Button
                 variant="primary"

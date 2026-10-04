@@ -91,6 +91,15 @@ export const VerificationResultSchema = z.object({
  * Final Report Schema
  */
 export const FinalReportSchema = z.object({
+  runId: z.string().optional(),
+  goal: z.string().optional(),
+  settings: z.object({
+    requireApprovalForWrites: z.boolean().optional(),
+    chaosMode: z.boolean().optional(),
+    askOnAmbiguity: z.boolean().optional(),
+    headless: z.boolean().optional(),
+    startedAt: z.string().optional(),
+  }).optional(),
   summary: z.string().min(1),
   status: z.enum(['completed', 'failed', 'aborted']),
   outcome: z.string().default(''),
@@ -151,13 +160,13 @@ export const ToolArgSchemas = {
     subpath: z.string().default(''),
   }),
   file_read_text: z.object({
-    path: z.string().min(1, 'File path is required'),
+    path: z.union([z.string().min(1, 'File path is required'), z.object({ value: z.string() }).passthrough().transform(o => o.value)]),
   }),
   pdf_extract_text: z.object({
-    path: z.string().min(1, 'PDF path is required'),
+    path: z.union([z.string().min(1, 'PDF path is required'), z.object({ value: z.string() }).passthrough().transform(o => o.value)]),
   }),
   pdf_extract_fields: z.object({
-    path: z.string().min(1, 'PDF path is required'),
+    path: z.union([z.string().min(1, 'PDF path is required'), z.object({ value: z.string() }).passthrough().transform(o => o.value)]),
     fieldsWanted: z.array(z.string()).min(1, 'At least one field name is required'),
   }),
 

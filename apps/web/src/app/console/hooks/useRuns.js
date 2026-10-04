@@ -77,6 +77,15 @@ export function useRuns() {
   useEffect(() => {
     fetchChaosStatus();
     loadPastRuns();
+
+    const handleFocus = () => {
+      fetchChaosStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [fetchChaosStatus, loadPastRuns]);
 
   return {
